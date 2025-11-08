@@ -132,4 +132,4 @@ coverage
 **/.firebase/
 **/firebase-debug.log
 **/firebase-debug.*.log
-**/.firebaserc # Contains project aliases, often local config
+**/.firebaserc
