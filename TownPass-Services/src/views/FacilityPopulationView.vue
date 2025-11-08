@@ -5,42 +5,11 @@
     >
       <h2 class="text-3xl font-bold text-gray-800 m-0">台北市運動中心即時人數</h2>
 
-      <div class="sort-controls flex items-center flex-wrap gap-3" role="toolbar">
-        <label for="sort-select" class="text-sm text-gray-600 whitespace-nowrap">排序方式：</label>
-
-        <div class="relative">
-          <select
-            id="sort-select"
-            v-model="sortBy"
-            class="appearance-none block w-full sm:w-auto bg-white border border-gray-300 rounded-lg py-2.5 px-4 pr-10 text-sm shadow-sm cursor-pointer hover:bg-gray-50 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-150"
-          >
-            <option value="name">依名稱 (筆劃)</option>
-            <option value="total">依總人數</option>
-            <option value="gym">依健身房人數</option>
-            <option value="swim">依游泳池人數</option>
-          </select>
-          <div
-            class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-700"
-          >
-            <svg
-              class="h-5 w-5"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path
-                fill-rule="evenodd"
-                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                clip-rule="evenodd"
-              />
-            </svg>
-          </div>
-        </div>
-
-        <button
-          @click="toggleSortDirection"
-          class="sort-direction-btn min-w-[90px] text-left border border-gray-300 rounded-lg py-2.5 px-4 bg-white text-sm shadow-sm cursor-pointer hover:bg-gray-50 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-150"
-        >
+      <div class="sort-controls">
+                <button @click="cycleSortBy" class="sort-by-btn">
+          🔁 {{ sortByText }}
+        </button>
+        <button @click="toggleSortDirection" class="sort-direction-btn">
           {{ sortDirection === 'asc' ? '🔼 升冪' : '🔽 降冪' }}
         </button>
 
@@ -135,6 +104,7 @@
         </div>
       </div>
     </div>
+    <div v-else-if="error" class="error-message">資料加載失敗：{{ error }}</div>
   </div>
 </template>
 
@@ -225,6 +195,35 @@ function toggleSortDirection() {
   sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc';
 }
 
+// --- 
+// 修改點 2：
+// 新增排序邏輯
+// ---
+const sortKeys: SortKey[] = ['name', 'total', 'gym', 'swim'];
+
+// 用 computed 顯示當前排序的中文
+const sortByText = computed(() => {
+  switch (sortBy.value) {
+    case 'name':
+      return '依名稱 (筆劃)';
+    case 'total':
+      return '依總人數';
+    case 'gym':
+      return '依健身房人數';
+    case 'swim':
+      return '依游泳池人數';
+    default:
+      return '排序方式';
+  }
+});
+
+// 循環切換排序方式
+function cycleSortBy() {
+  const currentIndex = sortKeys.indexOf(sortBy.value);
+  const nextIndex = (currentIndex + 1) % sortKeys.length; // 用 % 實現循環
+  sortBy.value = sortKeys[nextIndex];
+}
+// --- 排序邏輯修改結束 ---
 // ======================================================
 // !!!! NEW FUNCTION !!!!
 // 根據百分比回傳 Tailwind 顏色 class
@@ -364,20 +363,37 @@ async function fetchNanGangSportsCenters() {
   }
 }
 
+// 修正點：移除了你程式碼中重複的一行 async function fetchAllData()
 async function fetchAllData() {
-  data.value = [];
-  error.value = null;
-  const allPromises = [fetchTaipeiSportsCenters(), fetchNanGangSportsCenters()];
+  // const allPromises = [fetchTaipeiSportsCenters(), fetchNanGangSportsCenters()];
+  const allPromises = [fetchTaipeiSportsCenters()];
   const results = await Promise.allSettled(allPromises);
+
+  const newData: DataItem[] = [];
+  let fetchError = '';
+
   results.forEach((result) => {
     if (result.status === 'fulfilled' && result.value) {
-      data.value = data.value.concat(result.value);
+      newData.push(...result.value);
     } else if (result.status === 'rejected') {
       console.error('Error fetching data:', result.reason);
-      error.value += result.reason + ' ';
+      fetchError += result.reason + ' ';
     }
   });
-  console.log('Fetched data:', data.value);
+
+  if (fetchError) {
+    if (loading.value) {
+      error.value = fetchError.trim();
+      data.value = [];
+    } else {
+      console.error('Background refresh failed, keeping stale data:', fetchError.trim());
+    }
+  } else {
+    data.value = newData;
+    error.value = null; 
+    console.log('Fetched data (seamlessly updated):', data.value);
+  }
+
   loading.value = false;
 }
 let intervalId: number | null = null;
