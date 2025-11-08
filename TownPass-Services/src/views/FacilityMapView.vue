@@ -2,7 +2,7 @@
 import MessageModal from '@/components/molecules/MessageModal.vue';
 import { useGoogleMapsStore } from '@/stores/googleMaps';
 import axios from 'axios';
-import { onMounted, ref, watch } from 'vue';
+import { onMounted, ref, watch, computed } from 'vue';
 import { MarkerClusterer, SuperClusterAlgorithm } from '@googlemaps/markerclusterer';
 import greenDotIconUrl from '/public/images/map/youbike/mappin-green.svg';
 import defaultFocusIconUrl from '/public/images/map/icon_mappin-garbagetruck-green-pressed.svg';
@@ -102,6 +102,22 @@ function getLatLongByName(name: string): DistrictCoordinates {
 function getAddrByName(name: string): string {
   return DISTRICT_ADDRESS[name] || 'no address';
 }
+
+const navigationUrl = computed(() => {
+  // 檢查 selectedSpot 是否有值
+  if (!selectedSpot.value) {
+    return '#'; // 如果沒有選擇的點，返回一個安全的 'href'
+  }
+  
+  // 使用「地址」來導航 (您程式碼中的 selectedSpot.address)
+  const destination = selectedSpot.value.address;
+  
+  // 關鍵！對地址進行 URL 編碼，處理空格和特殊字元
+  const encodedDestination = encodeURIComponent(destination);
+  
+  // 返回從「目前位置」(省略 origin) 到「目的地」的網址
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodedDestination}&travelmode=driving`;
+});
 
 async function fetchTaipeiSportsCenters() {
   const apiUrl = '/api/TaipeiSportsCenters';
@@ -485,7 +501,9 @@ watch(searchSpotList, updateMarkers);
           <p class="font-bold mb-2">{{ selectedSpot.name }}運動中心</p>
           <div class="flex mb-2">
             <img src="@/assets/images/icon-geo.svg" alt="Location" />
-            <span class="underline">{{ selectedSpot.address }}</span>
+            <a :href="navigationUrl" target="_blank">
+              <span class="underline">{{ selectedSpot.address }}</span>
+            </a>
           </div>
           <div class="flex text-grey-500">
             <!-- <span>{{ selectedSpot.distance }}公里</span> -->
