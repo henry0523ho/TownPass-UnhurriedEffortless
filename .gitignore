@@ -126,3 +126,10 @@ coverage
 #======================================
 **/devtools_options.yaml
 **/android/**/problems-report.html
+
+#===========================
+# Firebase specific files and directories
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+.firebaserc # Contains project aliases, often local config
