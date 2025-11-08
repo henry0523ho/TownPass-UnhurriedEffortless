@@ -129,7 +129,7 @@ coverage
 
 #===========================
 # Firebase specific files and directories
-.firebase/
-firebase-debug.log
-firebase-debug.*.log
-.firebaserc # Contains project aliases, often local config
+**/.firebase/
+**/firebase-debug.log
+**/firebase-debug.*.log
+**/.firebaserc # Contains project aliases, often local config
