@@ -56,6 +56,19 @@ const DISTRICT_COORDINATES: Record<string, DistrictCoordinates> = {
 
 const DEFAULT_CENTER = { lat: 25.0325917, lng: 121.5624999 };
 
+const MARKER_ICON = {
+  DEFAULT: {
+    url: greenDotIconUrl,
+    scaledSize: { width: 20, height: 20 },
+    anchor: { x: 10, y: 20 }
+  },
+  FOCUSED: {
+    url: defaultFocusIconUrl,
+    scaledSize: { width: 48, height: 69 },
+    anchor: { x: 24, y: 69 }
+  }
+};
+
 // ==================== State ====================
 const searchSpotList = ref<Spot[]>([]);
 const filteredSpotList = ref<Spot[]>([]);
@@ -70,6 +83,7 @@ let map: google.maps.Map | null = null;
 let marker: google.maps.Marker | null = null;
 let markers: google.maps.Marker[] = [];
 let markerCluster: MarkerClusterer | null = null;
+let currentFocusedMarker: google.maps.Marker | null = null;
 
 const currentLocation = ref<{ lat: number; lng: number }>({
   lat: DEFAULT_CENTER.lat,
@@ -83,7 +97,8 @@ function getLatLongByName(name: string): DistrictCoordinates {
   return DISTRICT_COORDINATES[name] || { latitude: 25.0375, longitude: 121.5625 };
 }
 
-async function fetchTaipeiSportsCenters() {
+// ==================== API Functions ====================
+async function fetchTaipeiSportsCenters(): Promise<DataItem[]> {
   const apiUrl = '/api/TaipeiSportsCenters';
   try {
     const response = await axios.post(apiUrl);
@@ -97,7 +112,8 @@ async function fetchTaipeiSportsCenters() {
         gymMaxPeopleNum: number;
       }[];
     } = response.data;
-    const dataItems = rawData.locationPeopleNums.map((item) => ({
+
+    return rawData.locationPeopleNums.map((item) => ({
       name: item.lidName,
       swimPeopleNum: item.swPeopleNum,
       swimPeopleNumMax: item.swMaxPeopleNum,
@@ -106,7 +122,6 @@ async function fetchTaipeiSportsCenters() {
       latitude: getLatLongByName(item.lidName).latitude,
       longitude: getLatLongByName(item.lidName).longitude
     }));
-    return dataItems;
   } catch (err) {
     if (axios.isAxiosError(err)) {
       if (err.response) {
@@ -124,51 +139,7 @@ async function fetchTaipeiSportsCenters() {
   }
 }
 
-async function fetchNanGangSportsCenters() {
-  const apiUrl = '/api/NanGangSportsCenter';
-  try {
-    const response = await axios.post(apiUrl, null, {
-      headers: {
-        Accept: 'application/json, text/javascript, */*; q=0.01',
-        'X-Requested-With': 'XMLHttpRequest'
-      },
-      withCredentials: true
-    });
-    const rawData: {
-      gym: number[];
-      swim: number[];
-    } = response.data;
-    const dataItems: DataItem[] = [];
-    const dataItem: DataItem = {
-      name: '南港',
-      swimPeopleNum: rawData.swim[0],
-      swimPeopleNumMax: rawData.swim[1],
-      gymPeopleNum: rawData.gym[0],
-      gymPeopleNumMax: rawData.gym[1],
-      latitude: getLatLongByName('南港').latitude,
-      longitude: getLatLongByName('南港').longitude
-    };
-    dataItems.push(dataItem);
-    return dataItems;
-  } catch (err) {
-    if (axios.isAxiosError(err)) {
-      if (err.response) {
-        throw Error(
-          `NanGangSportsCenters: Axios response error: ${err.response.status} ${err.response.statusText}`
-        );
-      } else if (err.request) {
-        throw Error('NanGangSportsCenters: Axios request error: No response received');
-      } else {
-        throw Error(`NanGangSportsCenters: Axios error: ${err.message}`);
-      }
-    } else {
-      throw Error('NanGangSportsCenters: Unknown error: ' + String(err));
-    }
-  }
-}
-
 async function fetchAllData() {
-  // const allPromises = [fetchTaipeiSportsCenters(), fetchNanGangSportsCenters()];
   const allPromises = [fetchTaipeiSportsCenters()];
   const results = await Promise.allSettled(allPromises);
 
@@ -205,17 +176,11 @@ async function fetchAllData() {
       gymPeopleNumMax: item.gymPeopleNumMax
     }));
     error.value = null;
-    console.log('Fetched data (seamlessly updated):', searchSpotList.value);
+    console.log('Fetched data:', searchSpotList.value);
   }
 
   loading.value = false;
 }
-
-// ==================== Lifecycle ====================
-onMounted(() => {
-  fetchAllData();
-  initMap(currentLocation.value.lat, currentLocation.value.lng);
-});
 
 // ==================== Map Functions ====================
 const setMapHeight = () => {
@@ -225,64 +190,40 @@ const setMapHeight = () => {
   }
 };
 
-/**
- * 初始化地圖
- * @param lat 緯度
- * @param lng 經度
- */
 const initMap = (lat: number, lng: number) => {
   googleMapsStore.loader.load().then(async () => {
     const { Map } = (await google.maps.importLibrary('maps')) as google.maps.MapsLibrary;
 
     map = new Map(document.getElementById('map') as HTMLElement, {
-      // 設定地圖的中心點經緯度位置
       center: { lat, lng },
-      // 設定地圖縮放比例 0-20
       zoom: 13,
-      // 限制使用者能縮放地圖的最大比例
       maxZoom: 20,
-      // 限制使用者能縮放地圖的最小比例
       minZoom: 3,
-      // 設定是否呈現右下角街景小人
       streetViewControl: false,
-      // 設定是否讓使用者可以切換地圖樣式：一般、衛星圖等
       mapTypeControl: false,
       fullscreenControl: false,
       zoomControl: false,
-      // 替換成您的 MAP ID
       mapId: ''
     });
 
-    // init marker
     marker = new google.maps.Marker({
-      position: {
-        lat,
-        lng
-      },
+      position: { lat, lng },
       map,
       title: 'your location',
       icon: {
         path: google.maps.SymbolPath.CIRCLE,
         fillColor: '#4285F4',
         fillOpacity: 1,
-        scale: 8, // 控制大小
+        scale: 8,
         strokeColor: 'white',
         strokeWeight: 2
       }
     });
 
-    // get current location
     getPositionClick();
 
-    // 在地圖的dragend事件上使用該函數
-    map.addListener('dragend', function () {
-      updateMarkers();
-    });
-
-    // // 在地圖的zoom_changed事件上使用該函數
-    map.addListener('zoom_changed', function () {
-      updateMarkers();
-    });
+    map.addListener('dragend', updateMarkers);
+    map.addListener('zoom_changed', updateMarkers);
 
     isMapReady.value = true;
     setMapHeight();
@@ -314,12 +255,61 @@ const errorCallback = (error: any) => {
   }
 };
 
+const calculateDistance = (spot: Spot): number => {
+  return parseFloat(
+    (
+      google.maps.geometry.spherical.computeDistanceBetween(
+        new google.maps.LatLng(currentLocation.value.lat, currentLocation.value.lng),
+        new google.maps.LatLng(spot.lat, spot.lng)
+      ) / 1000
+    ).toFixed(1)
+  );
+};
+
+const createMarkerIcon = (
+  url: string,
+  size: { width: number; height: number },
+  anchor: { x: number; y: number }
+) => ({
+  url,
+  scaledSize: new google.maps.Size(size.width, size.height),
+  anchor: new google.maps.Point(anchor.x, anchor.y)
+});
+
+const createClusterRenderer = () => ({
+  render({ count, position }: any, stats: any) {
+    const circleRadius =
+      count > Math.max(10, stats.clusters.markers.mean)
+        ? count > Math.max(100, stats.clusters.markers.mean)
+          ? '100'
+          : '90'
+        : '80';
+
+    const svg =
+      window.btoa(`<svg fill="#2eb6c7" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="50" height="50">
+      <circle fill="#2eb6c7" cx="120" cy="120" opacity=".6" r="${circleRadius}" />
+      <circle fill="#fff" cx="120" cy="120" r="70" />
+      <text x="50%" y="50%" style="fill:#2eb6c7" text-anchor="middle" font-size="50" dominant-baseline="middle" font-family="roboto,arial,sans-serif">${count}</text>
+      </svg>`);
+
+    return new google.maps.Marker({
+      position,
+      icon: {
+        url: `data:image/svg+xml;base64,${svg}`,
+        scaledSize: new google.maps.Size(75, 75)
+      },
+      zIndex: Number(google.maps.Marker.MAX_ZINDEX) + count
+    });
+  }
+});
+
 const updateMarkers = async () => {
-  console.log('Updating markers based on current map bounds.');
   if (!map) return;
 
   const bounds = map.getBounds();
   if (!bounds) return;
+
+  console.log('Updating markers based on current map bounds.');
 
   filteredSpotList.value = searchSpotList.value
     .map((spot) => ({
@@ -329,98 +319,55 @@ const updateMarkers = async () => {
     .filter((spot) => bounds.contains(spot.position))
     .map((spot) => ({
       ...spot,
-      distance: parseFloat(
-        (
-          google.maps.geometry.spherical.computeDistanceBetween(
-            new google.maps.LatLng(currentLocation.value.lat, currentLocation.value.lng),
-            new google.maps.LatLng(spot.lat, spot.lng)
-          ) / 1000
-        ).toFixed(1)
-      )
+      distance: calculateDistance(spot)
     }));
 
   console.log('filteredSpotList:', filteredSpotList.value);
 
-  // Clear existing markers
   clearMarkers();
 
-  let currentFocusedMarker: any = null;
+  const defaultIcon = createMarkerIcon(
+    MARKER_ICON.DEFAULT.url,
+    MARKER_ICON.DEFAULT.scaledSize,
+    MARKER_ICON.DEFAULT.anchor
+  );
+
+  const focusedIcon = createMarkerIcon(
+    MARKER_ICON.FOCUSED.url,
+    MARKER_ICON.FOCUSED.scaledSize,
+    MARKER_ICON.FOCUSED.anchor
+  );
 
   filteredSpotList.value.forEach((spot) => {
-    const greenDotIcon = {
-      url: greenDotIconUrl, // 預設綠色小圓點圖標的路徑
-      scaledSize: new google.maps.Size(20, 20), // 設置圖標的大小
-      anchor: new google.maps.Point(10, 20) // 設置圖標的錨點，使其中心對齊底部
-    };
-
-    const marker = new google.maps.Marker({
+    const markerInstance = new google.maps.Marker({
       position: { lat: Number(spot.lat), lng: Number(spot.lng) },
       map,
-      icon: greenDotIcon
+      icon: defaultIcon
     });
 
-    marker.addListener('click', () => {
-      if (currentFocusedMarker && currentFocusedMarker !== marker) {
-        // 恢復之前聚焦的標記為預設圖標
-        currentFocusedMarker.setIcon(greenDotIcon);
+    markerInstance.addListener('click', () => {
+      if (currentFocusedMarker && currentFocusedMarker !== markerInstance) {
+        currentFocusedMarker.setIcon(defaultIcon);
         selectedSpot.value = null;
       }
 
-      const focusedIcon = {
-        url: defaultFocusIconUrl, // 點擊後聚焦圖標的路徑
-        scaledSize: new google.maps.Size(48, 69), // 設置圖標的大小
-        anchor: new google.maps.Point(24, 69) // 設置圖標的錨點，使其中心對齊底部
-      };
-
-      // 設置當前標記為聚焦圖標
-      marker.setIcon(focusedIcon);
-      currentFocusedMarker = marker;
-
-      // 獲取所選擇的 spot 的所有屬性
+      markerInstance.setIcon(focusedIcon);
+      currentFocusedMarker = markerInstance;
       selectedSpot.value = spot;
-      console.log('Selected spot:', selectedSpot);
+      console.log('Selected spot:', selectedSpot.value);
     });
 
-    markers.push(marker);
+    markers.push(markerInstance);
   });
 
-  // Add a marker clusterer to manage the markers.
   markerCluster = new MarkerClusterer({
     markers,
     map,
-    algorithm: new SuperClusterAlgorithm({ radius: 300 }), // 设置gridSize
-    renderer: {
-      render({ count, position }, stats) {
-        // change color if this cluster has more markers than the mean cluster
-        const circleRadius =
-          count > Math.max(10, stats.clusters.markers.mean)
-            ? count > Math.max(100, stats.clusters.markers.mean)
-              ? '100'
-              : '90'
-            : '80';
-        // create svg literal with fill color
-        const svg =
-          window.btoa(`<svg fill="#2eb6c7" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="50" height="50">
-          <circle fill="#2eb6c7" cx="120" cy="120" opacity=".6" r="${circleRadius}" />
-          <circle fill="#fff" cx="120" cy="120" r="70" />
-          <text x="50%" y="50%" style="fill:#2eb6c7" text-anchor="middle" font-size="50" dominant-baseline="middle" font-family="roboto,arial,sans-serif">${count}</text>
-          </svg>`);
-
-        // create marker using svg icon
-        return new google.maps.Marker({
-          position,
-          icon: {
-            url: `data:image/svg+xml;base64,${svg}`,
-            scaledSize: new google.maps.Size(75, 75)
-          },
-          // adjust zIndex to be above other markers
-          zIndex: Number(google.maps.Marker.MAX_ZINDEX) + count
-        });
-      }
-    }
+    algorithm: new SuperClusterAlgorithm({ radius: 300 }),
+    renderer: createClusterRenderer()
   });
 };
-updateMarkers();
+
 const clearMarkers = () => {
   markers.forEach((marker) => marker.setMap(null));
   markers = [];
@@ -430,32 +377,27 @@ const clearMarkers = () => {
   selectedSpot.value = null;
 };
 
-// Watch for changes in searchSpotList
+// ==================== Lifecycle ====================
+onMounted(() => {
+  fetchAllData();
+  initMap(currentLocation.value.lat, currentLocation.value.lng);
+});
+
+// ==================== Watchers ====================
 watch(searchSpotList, updateMarkers);
 </script>
 
 <template>
   <div class="absolute h-screen w-screen">
-    <!-- <div
-      :class="{ hidden: isExpandList || isExpandDetail, visible: !isExpandList && !isExpandDetail }"
-      class="h-full w-full"
-    > -->
     <div class="h-full w-full">
-      <!-- 找地點搜尋框 -->
-      <!-- <div class="flex items-center">
-        <FindPlace
-          @onSearchChange="(value) => handleSearchChange(value)"
-          @update:isExpand="handleExpandChange"
-        />
-      </div> -->
       <!-- 地圖 -->
-      <!-- <div class="relative flex-1 h-full w-full" :class="{ hidden: isExpand, visible: !isExpand }"> -->
       <div class="relative flex-1 h-full w-full">
         <div class="google-map h-full w-full" id="map" style="height: 100%"></div>
         <div v-if="isMapReady" class="gps" @click="getPositionClick">
-          <img src="@/assets/images/gps.png" width="20" alt="" />
+          <img src="@/assets/images/gps.png" width="20" alt="GPS" />
         </div>
       </div>
+
       <!-- 選取的點 -->
       <div v-if="selectedSpot" class="floating-box bottom-24 left-[50%] translate-x-[-50%] w-[90%]">
         <div>
@@ -470,47 +412,7 @@ watch(searchSpotList, updateMarkers);
         </div>
         <img src="@/assets/images/down-icon.svg" class="-rotate-90" alt="Expand" />
       </div>
-      <!-- 底部搜尋結果 -->
-      <!-- <div v-if="selectedSearchData.id && !isExpand" class="floating-box bottom-0 w-full">
-        <div class="flex items-center">
-          <span class="font-bold mr-2">{{ selectedSearchData.name }}</span>
-          <div class="text-primary-500 border border-primary-500 rounded-full px-2">
-            {{ filteredSpotList.length }}筆結果
-          </div>
-        </div>
-        <a class="text-primary-500" @click="isExpandList = true">展開列表</a>
-      </div> -->
     </div>
-    <!-- 搜尋結果列表 -->
-    <!-- <SpotList
-      v-if="isExpandList"
-      :selectedSearchData="selectedSearchData"
-      :filteredSpotList="filteredSpotList"
-      @update:isExpandList="(value: boolean) => (isExpandList = value)"
-      @update:selectedSpot="
-        (value: Spot) => {
-          selectedSpot = value;
-          isExpandDetail = true;
-          isFrom = 'list';
-        }
-      "
-    /> -->
-    <!-- 搜尋結果明細 -->
-    <!-- <SpotDetail
-      v-if="selectedSpot && isExpandDetail && isFrom"
-      :selectedSearchData="selectedSearchData"
-      :selectedSpot="selectedSpot"
-      @update:isExpandDetail="
-        (value) => {
-          isExpandDetail = value;
-          selectedSpot = null;
-          if (isFrom === 'list') {
-            isExpandList = true;
-          }
-          isFrom = '';
-        }
-      "
-    /> -->
   </div>
 
   <!-- geo modal -->
@@ -519,7 +421,7 @@ watch(searchSpotList, updateMarkers);
       <p>請啟用定位服務</p>
     </template>
     <template #body>
-      <p class="text-grey-700">打開定位服務來允許“城市通”確認您的位置</p>
+      <p class="text-grey-700">打開定位服務來允許"城市通"確認您的位置</p>
     </template>
     <template #footer>
       <button class="text-primary-500 px-7 py-2 w-full" @click="isShowGeoError = false">
