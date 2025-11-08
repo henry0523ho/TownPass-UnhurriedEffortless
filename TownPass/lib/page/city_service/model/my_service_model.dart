@@ -115,7 +115,8 @@ extension MyServiceIdExt on MyServiceItemId {
           icon: Assets.svg.iconEarthquake.svg(),
           category: MyServiceCategory.cityService,
           destinationUrl:
-              'https://taipei-pass-service.vercel.app/disaster-report',
+              // 'https://taipei-pass-service.vercel.app/disaster-report',
+              'http://10.0.2.2:5173/disaster-report',
         ),
       MyServiceItemId.vaccineAppointment => MyServiceItem(
           title: '疫苗預約',
