@@ -290,78 +290,144 @@ onUnmounted(() => {
 
 <style scoped>
 /* 8. 新增/修改 CSS 樣式 */
-
+/* * 8-1. 整體佈局與字體
+ * - 使用更現代的 UI 字體堆疊 (Inter, Noto Sans TC)
+ * - 增加一個非常淺的背景色，讓卡片更突出
+ */
 .center-status-container {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+  font-family:
+    'Inter',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    'Helvetica Neue',
+    Arial,
+    'Noto Sans TC',
+    'Microsoft JhengHei',
     sans-serif;
   max-width: 1200px;
   margin: 2rem auto;
-  padding: 0 1rem;
+  padding: 0 1.5rem; /* 稍微增加左右邊距 */
+  box-sizing: border-box;
 }
 
-/* 新增：標題和排序控制的容器 */
+/* * 8-2. 標題欄 (Header Bar)
+ * - 讓標題更醒目
+ * - 保持 flex 佈局的彈性
+ */
 .header-bar {
   display: flex;
-  justify-content: space-between; /* 讓標題在左、控制在右 */
+  justify-content: space-between;
   align-items: center;
   margin-bottom: 2rem;
-  flex-wrap: wrap; /* 在小螢幕時換行 */
-  gap: 1rem;
+  flex-wrap: wrap;
+  gap: 1.5rem; /* 增加標題和控制項的間距 */
 }
 
 h2 {
   text-align: left;
-  color: #333;
-  margin: 0; /* 移除 h2 的預設 margin */
+  color: #2c3e50; /* 使用更深的藍灰色 */
+  margin: 0;
+  font-size: 2rem; /* 加大標題 */
+  font-weight: 700;
 }
 
-/* 新增：排序控制項的樣式 */
+/* * 8-3. 排序控制項 (Sort Controls)
+ * - 統一按鈕和下拉選單的視覺風格
+ * - 自訂下拉選單的箭頭
+ * - 增加過渡動畫
+ */
 .sort-controls {
   display: flex;
   align-items: center;
-  gap: 0.75rem; /* 控制項之間的間距 */
+  gap: 0.75rem;
 }
 
 .sort-controls label {
   font-size: 0.95rem;
   color: #555;
-  white-space: nowrap; /* 避免 "排序方式：" 換行 */
+  white-space: nowrap;
 }
 
 .sort-controls select,
 .sort-controls button {
-  padding: 0.5rem 0.75rem;
-  border: 1px solid #ccc;
-  border-radius: 6px;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid #dcdfe6; /* 更柔和的邊框色 */
+  border-radius: 8px; /* 增加圓角 */
   background-color: #fff;
   font-size: 0.9rem;
-  font-family: inherit; /* 繼承字體 */
-}
-
-.sort-controls button {
+  font-family: inherit;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition:
+    all 0.2s ease-in-out;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
+/* 自訂下拉選單箭頭 */
+.sort-controls select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  /* Base64 SVG 箭頭 (向下) */
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1em;
+  padding-right: 2.5rem; /* 留出空間給箭頭 */
+}
+
+.sort-controls select:hover,
 .sort-controls button:hover {
-  background-color: #f4f4f4;
+  border-color: #c0c4cc;
+  background-color: #f8f9fa;
 }
 
-/* 讓按鈕寬度固定，避免文字改變時跳動 */
+.sort-controls select:focus,
+.sort-controls button:focus {
+  outline: none;
+  border-color: #409eff; /* 仿 Element UI 的 focus 色 */
+  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2);
+}
+
 .sort-direction-btn {
   min-width: 90px;
   text-align: left;
-  padding-left: 0.5rem;
-  padding-right: 0.5rem;
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
 }
 
-/* 以下為舊樣式 (不變) */
-
+/* * 8-4. 載入與錯誤訊息 (Loading & Error)
+ * - 將 loading 訊息改為 CSS 旋轉動畫
+ */
 .loading-message {
-  text-align: center;
-  font-size: 1.2rem;
-  color: #888;
-  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  font-size: 1.1rem;
+  color: #555;
+  padding: 4rem 2rem;
+  min-height: 200px;
+}
+
+/* CSS 旋轉動畫 (Spinner) */
+.loading-message::before {
+  content: '';
+  display: block;
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e0e0e0;
+  border-top-color: #1976D2; /* 使用新的主題藍色 */
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .error-message {
@@ -371,38 +437,48 @@ h2 {
   padding: 2rem;
   border: 1px solid #d9534f;
   background-color: #fdf2f2;
-  border-radius: 8px;
+  border-radius: 12px;
 }
 
+/* * 8-5. 卡片網格與卡片 (Grid & Card)
+ * - 使用更柔和、更擴散的陰影取代邊框
+ * - 增加卡片圓角
+ */
 .center-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1.5rem;
+  gap: 1.75rem; /* 增加卡片間距 */
 }
 
 .center-card {
-  border: 1px solid #e0e0e0;
-  border-radius: 12px;
+  border: none; /* 移除邊框 */
+  border-radius: 16px; /* 增加圓角 */
   padding: 1.5rem;
   background-color: #ffffff;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  /* 柔和的陰影 */
+  box-shadow: 0 6px 24px rgba(0, 37, 97, 0.07);
   transition:
-    transform 0.2s ease-in-out,
-    box-shadow 0.2s ease-in-out;
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
 }
 
 .center-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  transform: translateY(-6px);
+  /* 懸停時陰影更明顯 */
+  box-shadow: 0 10px 30px rgba(0, 37, 97, 0.1);
 }
 
+/* * 8-6. 卡片內容 (Card Content)
+ * - 微調標題、分隔線與數字顏色
+ */
 .center-card h3 {
   margin-top: 0;
   margin-bottom: 1rem;
   color: #1a1a1a;
-  font-size: 1.3rem;
-  border-bottom: 2px solid #f0f0f0;
-  padding-bottom: 0.75rem;
+  font-size: 1.4rem;
+  font-weight: 600;
+  border-bottom: 1px solid #eef2f7; /* 更輕量的分隔線 */
+  padding-bottom: 0.85rem;
 }
 
 .facility-status {
@@ -416,15 +492,18 @@ h2 {
 .facility-status h4 {
   font-size: 1.1rem;
   font-weight: 600;
-  color: #444;
+  color: #333;
   margin-top: 0;
-  margin-bottom: 0.75rem;
+  margin-bottom: 1rem;
+  display: flex; /* 讓 emoji 和文字對齊 */
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .status-display {
   display: flex;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 1.5rem; /* 增加兩個數字間的距離 */
 }
 
 .data-point {
@@ -437,19 +516,21 @@ h2 {
 .data-point .label {
   font-size: 0.9rem;
   color: #666;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.35rem;
 }
 
 .data-point strong {
   font-size: 2.2rem;
-  font-weight: 600;
+  font-weight: 700; /* 讓數字更粗 */
+  letter-spacing: -0.5px; /* 讓數字更緊湊 */
 }
 
+/* 新的顏色配置 */
 .current-count strong {
-  color: #d9534f;
+  color: #FF9800; /* "忙碌" 的溫暖橘色 */
 }
 
 .capacity-count strong {
-  color: #0275d8;
+  color: #1976D2; /* "穩定" 的深藍色 */
 }
 </style>
