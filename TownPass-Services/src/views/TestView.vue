@@ -4,13 +4,9 @@
       <h2>台北市運動中心即時人數</h2>
 
       <div class="sort-controls">
-        <label for="sort-select">排序方式：</label>
-        <select id="sort-select" v-model="sortBy">
-          <option value="name">依名稱 (筆劃)</option>
-          <option value="total">依總人數</option>
-          <option value="gym">依健身房人數</option>
-          <option value="swim">依游泳池人數</option>
-        </select>
+                <button @click="cycleSortBy" class="sort-by-btn">
+          🔁 {{ sortByText }}
+        </button>
         <button @click="toggleSortDirection" class="sort-direction-btn">
           {{ sortDirection === 'asc' ? '🔼 升冪' : '🔽 降冪' }}
         </button>
@@ -24,12 +20,11 @@
     </div>
 
     <div v-if="loading" class="loading-message">正在從API獲取即時數據...</div>
-    <div v-else-if="error" class="error-message">資料加載失敗：{{ error }}</div>
-
+    
     <div v-else-if="data.length > 0" class="center-grid">
       <div v-for="center in sortedData" :key="center.name" class="center-card">
         <h3>{{ center.name }}</h3>
-
+        
         <div class="facility-status">
           <h4>🏊 游泳池</h4>
           <div class="status-display">
@@ -43,7 +38,7 @@
             </div>
           </div>
         </div>
-
+        
         <div class="facility-status">
           <h4>🏋️ 健身房</h4>
           <div class="status-display">
@@ -59,6 +54,7 @@
         </div>
       </div>
     </div>
+    <div v-else-if="error" class="error-message">資料加載失敗：{{ error }}</div>
   </div>
 </template>
 
@@ -144,6 +140,36 @@ const sortDirection = ref<'asc' | 'desc'>('asc');
 function toggleSortDirection() {
   sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc';
 }
+
+// --- 
+// 修改點 2：
+// 新增排序邏輯
+// ---
+const sortKeys: SortKey[] = ['name', 'total', 'gym', 'swim'];
+
+// 用 computed 顯示當前排序的中文
+const sortByText = computed(() => {
+  switch (sortBy.value) {
+    case 'name':
+      return '依名稱 (筆劃)';
+    case 'total':
+      return '依總人數';
+    case 'gym':
+      return '依健身房人數';
+    case 'swim':
+      return '依游泳池人數';
+    default:
+      return '排序方式';
+  }
+});
+
+// 循環切換排序方式
+function cycleSortBy() {
+  const currentIndex = sortKeys.indexOf(sortBy.value);
+  const nextIndex = (currentIndex + 1) % sortKeys.length; // 用 % 實現循環
+  sortBy.value = sortKeys[nextIndex];
+}
+// --- 排序邏輯修改結束 ---
 
 const sortedData = computed(() => {
   const dataCopy = [...data.value];
@@ -259,20 +285,36 @@ async function fetchNanGangSportsCenters() {
   }
 }
 
+// 修正點：移除了你程式碼中重複的一行 async function fetchAllData()
 async function fetchAllData() {
-  data.value = [];
-  error.value = null;
   const allPromises = [fetchTaipeiSportsCenters(), fetchNanGangSportsCenters()];
   const results = await Promise.allSettled(allPromises);
+
+  const newData: DataItem[] = [];
+  let fetchError = '';
+
   results.forEach((result) => {
     if (result.status === 'fulfilled' && result.value) {
-      data.value = data.value.concat(result.value);
+      newData.push(...result.value);
     } else if (result.status === 'rejected') {
       console.error('Error fetching data:', result.reason);
-      error.value += result.reason + ' ';
+      fetchError += result.reason + ' ';
     }
   });
-  console.log('Fetched data:', data.value);
+
+  if (fetchError) {
+    if (loading.value) {
+      error.value = fetchError.trim();
+      data.value = [];
+    } else {
+      console.error('Background refresh failed, keeping stale data:', fetchError.trim());
+    }
+  } else {
+    data.value = newData;
+    error.value = null; 
+    console.log('Fetched data (seamlessly updated):', data.value);
+  }
+
   loading.value = false;
 }
 let intervalId: number | null = null;
@@ -354,6 +396,17 @@ h2 {
   padding-left: 0.5rem;
   padding-right: 0.5rem;
 }
+
+/* 修改點 3：
+  為新的排序按鈕新增樣式，防止跳動
+*/
+.sort-by-btn {
+  min-width: 150px;
+  text-align: left;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+
 
 /* 以下為舊樣式 (不變) */
 
