@@ -4,8 +4,6 @@ import { useGoogleMapsStore } from '@/stores/googleMaps';
 import axios from 'axios';
 import { onMounted, ref, watch, computed } from 'vue';
 import { MarkerClusterer, SuperClusterAlgorithm } from '@googlemaps/markerclusterer';
-import greenDotIconUrl from '/public/images/map/youbike/mappin-green.svg';
-import defaultFocusIconUrl from '/public/images/map/icon_mappin-garbagetruck-green-pressed.svg';
 
 // ==================== Types ====================
 export interface Spot {
@@ -80,7 +78,7 @@ const loading = ref(true);
 const error = ref<string | null>(null);
 const isMapReady = ref(false);
 const isShowGeoError = ref(false);
-
+const sportType = ref<'swim' | 'gym'>('swim');
 // Map related state
 let map: google.maps.Map | null = null;
 let marker: google.maps.Marker | null = null;
@@ -108,16 +106,78 @@ const navigationUrl = computed(() => {
   if (!selectedSpot.value) {
     return '#'; // 如果沒有選擇的點，返回一個安全的 'href'
   }
-  
+
   // 使用「地址」來導航 (您程式碼中的 selectedSpot.address)
   const destination = selectedSpot.value.address;
-  
+
   // 關鍵！對地址進行 URL 編碼，處理空格和特殊字元
   const encodedDestination = encodeURIComponent(destination);
-  
+
   // 返回從「目前位置」(省略 origin) 到「目的地」的網址
   return `https://www.google.com/maps/dir/?api=1&destination=${encodedDestination}&travelmode=driving`;
 });
+
+function generateSVG(
+  color: string,
+  sportType: string,
+  size: string,
+  currentNum?: number,
+  maxNum?: number
+): string {
+  let iconColor = color;
+  if (maxNum !== undefined && currentNum !== undefined) {
+    const usageRate = currentNum / maxNum;
+    if (usageRate >= 0.8) {
+      iconColor = '#ff0000'; // Red
+    } else if (usageRate >= 0.5) {
+      iconColor = '#ff9d00'; // Orange
+    } else {
+      iconColor = '#00d916'; // Green
+    }
+  } else {
+    iconColor = '#979ba1';
+  }
+  if (size == 'small') {
+    const iconType = sportType === 'swim' ? 'swimming' : 'dumbbell';
+    const swimSvg = `<g fill="white" transform="scale(0.45) translate(67, 30)">
+      <path d="M127.7,108.4c-2.8,0-5.5-0.6-7.8-1.7c-2.5-1.1-5.2-1.8-8.1-1.8c-2.9,0-5.7,0.7-8.1,1.8c-2.4,1.1-5,1.7-7.8,1.7 c-2.8,0-5.5-0.6-7.8-1.7c-2.5-1.1-5.3-1.8-8.1-1.8c-2.9,0-5.7,0.7-8.1,1.8c-2.4,1.1-5.1,1.7-7.9,1.7c-2.8,0-5.5-0.6-7.9-1.7 c-2.5-1.1-5.2-1.8-8.1-1.8c-2.9,0-5.7,0.7-8.1,1.8c-2.4,1.1-5.1,1.7-7.9,1.7c-2.8,0-5.5-0.6-7.8-1.7c-2.5-1.1-5.2-1.8-8.1-1.8 c-2.9,0-5.6,0.7-8.1,1.8c-2.4,1.1-5.1,1.7-7.9,1.7V96.6C2.9,96.6,5.6,96,8,95c2.4-1.1,5.2-1.8,8.1-1.8c2.9,0,5.6,0.7,8.1,1.8 c2.4,1,5.1,1.7,7.8,1.7c2.8,0,5.5-0.6,7.9-1.7c2.4-1.1,5.2-1.8,8.1-1.8c2.8,0,5.6,0.7,8.1,1.8c2.4,1,5.1,1.7,7.9,1.7 c2.8,0,5.5-0.6,7.9-1.7c2.4-1.1,5.2-1.8,8.1-1.8c2.8,0,5.6,0.7,8.1,1.8c2.4,1,5,1.7,7.8,1.7c2.8,0,5.5-0.6,7.8-1.7 c2.5-1.1,5.2-1.8,8.1-1.8c2.9,0,5.6,0.7,8.1,1.8c2.4,1,5,1.7,7.8,1.7V108.4z"/>
+      <path d="M109.2,75.1c8.4,0,15.2-6.8,15.2-15.2c0-8.4-6.8-15.2-15.2-15.2c-8.4,0-15.2,6.8-15.2,15.2C94,68.3,100.2,75.1,109.2,75.1"/>
+      <path d="M20.8,83.7c1.2,0.3,2.3,0.7,3.3,1.2c2.4,1.1,5.1,1.7,7.8,1.7c2.8,0,5.5-0.6,7.9-1.7c2.4-1.1,5.2-1.8,8.1-1.8 c2.9,0,5.6,0.7,8.1,1.8c2.4,1.1,5.1,1.7,7.9,1.7c2.8,0,5.5-0.6,7.9-1.7c2.4-1.1,5.2-1.8,8.1-1.8c2.9,0,5.6,0.7,8.1,1.8 c2.4,1.1,5,1.7,7.8,1.7c2,0,4-0.4,5.9-0.9L76.3,40l29.4-5.4c4.3-0.8,7.5-4.2,7.5-8.6c0-4.8-3.9-8.6-8.7-8.6c-0.3,0-0.7,0-1,0 l-45.5,8.3c-3.2,0.7-7.4,5.4-5,11.1c0.1,0.3,0.3,0.6,0.4,0.9l11.9,21.4L20.8,83.7z"/>
+    </g>`;
+    const gymSvg = `<g fill="white" transform="scale(1.4) translate(20, 12)">
+      <path d="M41.573,15.879v-1.675c0-1.922-1.558-3.495-3.479-3.495h-2.761c-1.921,0-3.479,1.573-3.479,3.495v4.693H13.319v-4.693 c0-1.922-1.558-3.495-3.479-3.495H7.079c-1.921,0-3.479,1.573-3.479,3.495v1.675c-1.979,0-3.6,1.617-3.6,3.613v6.172 c0,1.996,1.71,3.613,3.6,3.613v1.674c0,1.922,1.558,3.513,3.479,3.513H9.84c1.921,0,3.479-1.591,3.479-3.513v-4.676h18.536v4.676 c0,1.922,1.558,3.513,3.479,3.513h2.762c1.92,0,3.479-1.591,3.479-3.513v-1.674c1.979,0,3.6-1.619,3.6-3.613v-6.172 C45.172,17.496,43.462,15.879,41.573,15.879z"/>
+    </g>`;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 124 124" fill="none">
+  <g transform="scale(1.1) translate(-4,-2)">
+    <path d="M12 21a1 1 0 0 1-.744-.332C10.615 19.954 5 13.59 5 10a7 7 0 0 1 14 0c0 3.59-5.615 9.954-6.256 10.668A1 1 0 0 1 12 21z" fill="${iconColor}" transform="scale(6) translate(-2, -2)"/>
+    ${iconType === 'swimming' ? swimSvg : gymSvg}
+  </g>
+</svg>`;
+    return `data:image/svg+xml;base64,${btoa(svg)}`;
+  } else if (size == 'big') {
+    const swimSvg = `<g fill="white" transform="scale(0.05) translate(60,50)">
+    <path d="M127.7,108.4c-2.8,0-5.5-0.6-7.8-1.7c-2.5-1.1-5.2-1.8-8.1-1.8c-2.9,0-5.7,0.7-8.1,1.8c-2.4,1.1-5,1.7-7.8,1.7 c-2.8,0-5.5-0.6-7.8-1.7c-2.5-1.1-5.3-1.8-8.1-1.8c-2.9,0-5.7,0.7-8.1,1.8c-2.4,1.1-5.1,1.7-7.9,1.7c-2.8,0-5.5-0.6-7.9-1.7 c-2.5-1.1-5.2-1.8-8.1-1.8c-2.9,0-5.7,0.7-8.1,1.8c-2.4,1.1-5.1,1.7-7.9,1.7c-2.8,0-5.5-0.6-7.8-1.7c-2.5-1.1-5.2-1.8-8.1-1.8 c-2.9,0-5.6,0.7-8.1,1.8c-2.4,1.1-5.1,1.7-7.9,1.7V96.6C2.9,96.6,5.6,96,8,95c2.4-1.1,5.2-1.8,8.1-1.8c2.9,0,5.6,0.7,8.1,1.8 c2.4,1,5.1,1.7,7.8,1.7c2.8,0,5.5-0.6,7.9-1.7c2.4-1.1,5.2-1.8,8.1-1.8c2.8,0,5.6,0.7,8.1,1.8c2.4,1,5.1,1.7,7.9,1.7 c2.8,0,5.5-0.6,7.9-1.7c2.4-1.1,5.2-1.8,8.1-1.8c2.8,0,5.6,0.7,8.1,1.8c2.4,1,5,1.7,7.8,1.7c2.8,0,5.5-0.6,7.8-1.7 c2.5-1.1,5.2-1.8,8.1-1.8c2.9,0,5.6,0.7,8.1,1.8c2.4,1,5,1.7,7.8,1.7V108.4z"/>
+    <path d="M109.2,75.1c8.4,0,15.2-6.8,15.2-15.2c0-8.4-6.8-15.2-15.2-15.2c-8.4,0-15.2,6.8-15.2,15.2C94,68.3,100.2,75.1,109.2,75.1"/>
+    <path d="M20.8,83.7c1.2,0.3,2.3,0.7,3.3,1.2c2.4,1.1,5.1,1.7,7.8,1.7c2.8,0,5.5-0.6,7.9-1.7c2.4-1.1,5.2-1.8,8.1-1.8 c2.9,0,5.6,0.7,8.1,1.8c2.4,1.1,5.1,1.7,7.9,1.7c2.8,0,5.5-0.6,7.9-1.7c2.4-1.1,5.2-1.8,8.1-1.8c2.9,0,5.6,0.7,8.1,1.8 c2.4,1.1,5,1.7,7.8,1.7c2,0,4-0.4,5.9-0.9L76.3,40l29.4-5.4c4.3-0.8,7.5-4.2,7.5-8.6c0-4.8-3.9-8.6-8.7-8.6c-0.3,0-0.7,0-1,0 l-45.5,8.3c-3.2,0.7-7.4,5.4-5,11.1c0.1,0.3,0.3,0.6,0.4,0.9l11.9,21.4L20.8,83.7z"/>
+  </g>`;
+    const gymSvg = `<g fill="white" transform="scale(0.14) translate(22,21)">
+    <path d="M41.573,15.879v-1.675c0-1.922-1.558-3.495-3.479-3.495h-2.761c-1.921,0-3.479,1.573-3.479,3.495v4.693H13.319v-4.693 c0-1.922-1.558-3.495-3.479-3.495H7.079c-1.921,0-3.479,1.573-3.479,3.495v1.675c-1.979,0-3.6,1.617-3.6,3.613v6.172 c0,1.996,1.71,3.613,3.6,3.613v1.674c0,1.922,1.558,3.513,3.479,3.513H9.84c1.921,0,3.479-1.591,3.479-3.513v-4.676h18.536v4.676 c0,1.922,1.558,3.513,3.479,3.513h2.762c1.92,0,3.479-1.591,3.479-3.513v-1.674c1.979,0,3.6-1.619,3.6-3.613v-6.172 C45.172,17.496,43.462,15.879,41.573,15.879z"/>
+  </g>`;
+    const svg = `<svg viewBox="0 0 24 24" width="200" height="200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g transform="scale(1,0.6)">
+    <path fill-rule="evenodd" clip-rule="evenodd" d="M6.93417 2C6.95604 2 6.97799 2 7 2L17.0658 2C17.9523 1.99995 18.7161 1.99991 19.3278 2.08215C19.9833 2.17028 20.6117 2.36902 21.1213 2.87868C21.631 3.38835 21.8297 4.0167 21.9179 4.67221C22.0001 5.28388 22.0001 6.0477 22 6.9342V13.0658C22.0001 13.9523 22.0001 14.7161 21.9179 15.3278C21.8297 15.9833 21.631 16.6117 21.1213 17.1213C20.6117 17.631 19.9833 17.8297 19.3278 17.9179C18.7161 18.0001 17.9523 18.0001 17.0658 18L15.0543 18L12.984 21.3124C12.5295 22.0396 11.4705 22.0396 11.016 21.3124L8.94576 18L6.9342 18C6.0477 18.0001 5.28388 18.0001 4.67221 17.9179C4.0167 17.8297 3.38835 17.631 2.87868 17.1213C2.36902 16.6117 2.17028 15.9833 2.08215 15.3278C1.99991 14.7161 1.99995 13.9523 2 13.0658L2 7C2 6.97799 2 6.95604 2 6.93417C1.99995 6.04769 1.99991 5.28387 2.08215 4.67221C2.17028 4.0167 2.36902 3.38835 2.87868 2.87868C3.38835 2.36902 4.0167 2.17028 4.67221 2.08215C5.28387 1.99991 6.04769 1.99995 6.93417 2Z" fill="${iconColor}"/>
+  </g>
+  ${sportType === 'swim' ? swimSvg : gymSvg}
+  <g>
+    <text x="15.5" y="4" style="fill:white" text-anchor="middle" font-size="4" dominant-baseline="middle" font-family="roboto,arial,sans-serif">${currentNum ?? '-'}</text>
+    <line x1="11.5" y1="5.5" x2="19.5" y2="5.5" style="stroke:white;stroke-width:0.3" />
+    <text x="15.5" y="8" style="fill:white" text-anchor="middle" font-size="4" dominant-baseline="middle" font-family="roboto,arial,sans-serif">${maxNum ?? '-'}</text>
+  </g>
+</svg>`;
+    return `data:image/svg+xml;base64,${btoa(svg)}`;
+  }
+  return '';
+}
 
 async function fetchTaipeiSportsCenters() {
   const apiUrl = '/api/TaipeiSportsCenters';
@@ -246,14 +306,14 @@ async function fetchAllData() {
     error.value = null;
     console.log('Fetched data (seamlessly updated):', searchSpotList.value);
   }
-
   loading.value = false;
 }
 
 // ==================== Lifecycle ====================
-onMounted(() => {
-  fetchAllData();
+onMounted(async () => {
+  await fetchAllData();
   initMap(currentLocation.value.lat, currentLocation.value.lng);
+  updateMarkers();
 });
 
 // ==================== Map Functions ====================
@@ -329,6 +389,10 @@ const initMap = (lat: number, lng: number) => {
   });
 };
 
+function toggleSportType() {
+  sportType.value = sportType.value === 'swim' ? 'gym' : 'swim';
+  updateMarkers();
+}
 const getPositionClick = () => {
   googleMapsStore
     .gettingPosition()!!
@@ -387,9 +451,15 @@ const updateMarkers = async () => {
 
   filteredSpotList.value.forEach((spot) => {
     const greenDotIcon = {
-      url: greenDotIconUrl, // 預設綠色小圓點圖標的路徑
-      scaledSize: new google.maps.Size(20, 20), // 設置圖標的大小
-      anchor: new google.maps.Point(10, 20) // 設置圖標的錨點，使其中心對齊底部
+      url: generateSVG(
+        'red',
+        sportType.value,
+        'small',
+        sportType.value === 'swim' ? spot.swimPeopleNum : spot.gymPeopleNum,
+        sportType.value === 'swim' ? spot.swimPeopleNumMax : spot.gymPeopleNumMax
+      ), // 預設綠色小圓點圖標的路徑
+      scaledSize: new google.maps.Size(40, 40), // 設置圖標的大小
+      anchor: new google.maps.Point(20, 40) // 設置圖標的錨點，使其中心對齊底部
     };
 
     const marker = new google.maps.Marker({
@@ -404,19 +474,28 @@ const updateMarkers = async () => {
         currentFocusedMarker.setIcon(greenDotIcon);
         selectedSpot.value = null;
       }
-
+      // 獲取所選擇的 spot 的所有屬性
+      selectedSpot.value = spot;
       const focusedIcon = {
-        url: defaultFocusIconUrl, // 點擊後聚焦圖標的路徑
-        scaledSize: new google.maps.Size(48, 69), // 設置圖標的大小
-        anchor: new google.maps.Point(24, 69) // 設置圖標的錨點，使其中心對齊底部
+        url: generateSVG(
+          'red',
+          sportType.value,
+          'big',
+          sportType.value === 'swim'
+            ? selectedSpot.value?.swimPeopleNum
+            : selectedSpot.value?.gymPeopleNum,
+          sportType.value === 'swim'
+            ? selectedSpot.value?.swimPeopleNumMax
+            : selectedSpot.value?.gymPeopleNumMax
+        ), // 點擊後聚焦圖標的路徑
+        scaledSize: new google.maps.Size(150, 90), // 設置圖標的大小
+        anchor: new google.maps.Point(75, 50) // 設置圖標的錨點，使其中心對齊底部
       };
 
       // 設置當前標記為聚焦圖標
       marker.setIcon(focusedIcon);
       currentFocusedMarker = marker;
 
-      // 獲取所選擇的 spot 的所有屬性
-      selectedSpot.value = spot;
       console.log('Selected spot:', selectedSpot);
     });
 
@@ -427,7 +506,7 @@ const updateMarkers = async () => {
   markerCluster = new MarkerClusterer({
     markers,
     map,
-    algorithm: new SuperClusterAlgorithm({ radius: 300 }), // 设置gridSize
+    algorithm: new SuperClusterAlgorithm({ radius: 10 }), // 设置gridSize
     renderer: {
       render({ count, position }, stats) {
         // change color if this cluster has more markers than the mean cluster
@@ -471,6 +550,7 @@ const clearMarkers = () => {
 
 // Watch for changes in searchSpotList
 watch(searchSpotList, updateMarkers);
+watch(loading, updateMarkers);
 </script>
 
 <template>
@@ -507,11 +587,56 @@ watch(searchSpotList, updateMarkers);
           </div>
           <div class="flex text-grey-500">
             <!-- <span>{{ selectedSpot.distance }}公里</span> -->
-            <span>健身房{{ selectedSpot.gymPeopleNum }}/{{selectedSpot.gymPeopleNumMax}}</span>
-            <span>游泳池{{ selectedSpot.swimPeopleNum }}/{{selectedSpot.swimPeopleNumMax}}</span>
+            <span>健身房{{ selectedSpot.gymPeopleNum }}/{{ selectedSpot.gymPeopleNumMax }}</span>
+            <span>游泳池{{ selectedSpot.swimPeopleNum }}/{{ selectedSpot.swimPeopleNumMax }}</span>
           </div>
         </div>
         <img src="@/assets/images/down-icon.svg" class="-rotate-90" alt="Expand" />
+      </div>
+      <div
+        v-if="selectedSpot == null"
+        class="absolute w-screen bottom-24 flex items-center justify-center"
+      >
+        <div class="w-28 h-16 bg-sky-300 rounded-full" @click="toggleSportType">
+          <div v-if="sportType == 'swim'" class="w-16 h-16 rounded-full bg-white z-10">
+            <svg
+              viewBox="0 0 128 128"
+              width="48"
+              height="48"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              class="m-auto pt-2"
+            >
+              <g fill="#74d4ff">
+                <path
+                  d="M127.7,108.4c-2.8,0-5.5-0.6-7.8-1.7c-2.5-1.1-5.2-1.8-8.1-1.8c-2.9,0-5.7,0.7-8.1,1.8c-2.4,1.1-5,1.7-7.8,1.7 c-2.8,0-5.5-0.6-7.8-1.7c-2.5-1.1-5.3-1.8-8.1-1.8c-2.9,0-5.7,0.7-8.1,1.8c-2.4,1.1-5.1,1.7-7.9,1.7c-2.8,0-5.5-0.6-7.9-1.7 c-2.5-1.1-5.2-1.8-8.1-1.8c-2.9,0-5.7,0.7-8.1,1.8c-2.4,1.1-5.1,1.7-7.9,1.7c-2.8,0-5.5-0.6-7.8-1.7c-2.5-1.1-5.2-1.8-8.1-1.8 c-2.9,0-5.6,0.7-8.1,1.8c-2.4,1.1-5.1,1.7-7.9,1.7V96.6C2.9,96.6,5.6,96,8,95c2.4-1.1,5.2-1.8,8.1-1.8c2.9,0,5.6,0.7,8.1,1.8 c2.4,1,5.1,1.7,7.8,1.7c2.8,0,5.5-0.6,7.9-1.7c2.4-1.1,5.2-1.8,8.1-1.8c2.8,0,5.6,0.7,8.1,1.8c2.4,1,5.1,1.7,7.9,1.7 c2.8,0,5.5-0.6,7.9-1.7c2.4-1.1,5.2-1.8,8.1-1.8c2.8,0,5.6,0.7,8.1,1.8c2.4,1,5,1.7,7.8,1.7c2.8,0,5.5-0.6,7.8-1.7 c2.5-1.1,5.2-1.8,8.1-1.8c2.9,0,5.6,0.7,8.1,1.8c2.4,1,5,1.7,7.8,1.7V108.4z"
+                />
+                <path
+                  d="M109.2,75.1c8.4,0,15.2-6.8,15.2-15.2c0-8.4-6.8-15.2-15.2-15.2c-8.4,0-15.2,6.8-15.2,15.2C94,68.3,100.2,75.1,109.2,75.1"
+                />
+                <path
+                  d="M20.8,83.7c1.2,0.3,2.3,0.7,3.3,1.2c2.4,1.1,5.1,1.7,7.8,1.7c2.8,0,5.5-0.6,7.9-1.7c2.4-1.1,5.2-1.8,8.1-1.8 c2.9,0,5.6,0.7,8.1,1.8c2.4,1.1,5.1,1.7,7.9,1.7c2.8,0,5.5-0.6,7.9-1.7c2.4-1.1,5.2-1.8,8.1-1.8c2.9,0,5.6,0.7,8.1,1.8 c2.4,1.1,5,1.7,7.8,1.7c2,0,4-0.4,5.9-0.9L76.3,40l29.4-5.4c4.3-0.8,7.5-4.2,7.5-8.6c0-4.8-3.9-8.6-8.7-8.6c-0.3,0-0.7,0-1,0 l-45.5,8.3c-3.2,0.7-7.4,5.4-5,11.1c0.1,0.3,0.3,0.6,0.4,0.9l11.9,21.4L20.8,83.7z"
+                />
+              </g>
+            </svg>
+          </div>
+          <div v-if="sportType == 'gym'" class="w-16 h-16 rounded-full bg-white ml-12">
+            <svg
+              viewBox="0 0 45.174 45.174"
+              width="54"
+              height="54"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              class="m-auto pt-2 ml-1"
+            >
+              <g fill="#74d4ff">
+                <path
+                  d="M41.573,15.879v-1.675c0-1.922-1.558-3.495-3.479-3.495h-2.761c-1.921,0-3.479,1.573-3.479,3.495v4.693H13.319v-4.693 c0-1.922-1.558-3.495-3.479-3.495H7.079c-1.921,0-3.479,1.573-3.479,3.495v1.675c-1.979,0-3.6,1.617-3.6,3.613v6.172 c0,1.996,1.71,3.613,3.6,3.613v1.674c0,1.922,1.558,3.513,3.479,3.513H9.84c1.921,0,3.479-1.591,3.479-3.513v-4.676h18.536v4.676 c0,1.922,1.558,3.513,3.479,3.513h2.762c1.92,0,3.479-1.591,3.479-3.513v-1.674c1.979,0,3.6-1.619,3.6-3.613v-6.172 C45.172,17.496,43.462,15.879,41.573,15.879z"
+                />
+              </g>
+            </svg>
+          </div>
+        </div>
       </div>
       <!-- 底部搜尋結果 -->
       <!-- <div v-if="selectedSearchData.id && !isExpand" class="floating-box bottom-0 w-full">
