@@ -63,11 +63,9 @@
 </template>
 
 <script setup lang="ts">
-// 4. 從 'vue' 引入 'computed'
 import { ref, onMounted, computed, onUnmounted } from 'vue';
 import axios from 'axios';
 
-// 您的 TypeScript 型別 (不變)
 type DataItem = {
   name: string;
   swimPeopleNum?: number;
@@ -78,20 +76,51 @@ type DataItem = {
   longitude: number;
 };
 
-// 您的 state (不變)
 const initialCenters = [
-  '北投運動中心',
-  '大安運動中心',
-  '大同運動中心',
-  '中正運動中心',
-  '內湖運動中心',
-  '士林運動中心',
-  '松山運動中心',
-  '萬華運動中心',
-  '文山運動中心',
-  '信義運動中心',
-  '中山運動中心'
+  '北投',
+  '大安',
+  '大同',
+  '中正',
+  '內湖',
+  '士林',
+  '松山',
+  '萬華',
+  '文山',
+  '信義',
+  '中山',
+  '南港'
 ];
+
+function getLatLongByName(name: string): { latitude: number; longitude: number } {
+  switch (name) {
+    case '北投':
+      return { latitude: 25.116499631184173, longitude: 121.50983145269343 };
+    case '大安':
+      return { latitude: 25.0207374694988, longitude: 121.54575719476065 };
+    case '大同':
+      return { latitude: 25.065371179032034, longitude: 121.51619920587748 };
+    case '中正':
+      return { latitude: 25.038517677819875, longitude: 121.51933133187974 };
+    case '內湖':
+      return { latitude: 25.078155736925535, longitude: 121.57476476642667 };
+    case '士林':
+      return { latitude: 25.08942122491574, longitude: 121.52156330976973 };
+    case '松山':
+      return { latitude: 25.04879199681975, longitude: 121.58187521229682 };
+    case '萬華':
+      return { latitude: 25.047456736404317, longitude: 121.50686764837137 };
+    case '文山':
+      return { latitude: 24.997014158084, longitude: 121.55945597940692 };
+    case '信義':
+      return { latitude: 25.031698544420017, longitude: 121.56676886503183 };
+    case '中山':
+      return { latitude: 25.05484192557673, longitude: 121.5213455316616 };
+    case '南港':
+      return { latitude: 25.04879289615886, longitude: 121.58187402886895 };
+    default:
+      return { latitude: 25.0375, longitude: 121.5625 };
+  }
+}
 
 const data = ref<DataItem[]>(
   initialCenters.map((name) => ({
@@ -100,46 +129,30 @@ const data = ref<DataItem[]>(
     swimPeopleNumMax: 0,
     gymPeopleNum: 0,
     gymPeopleNumMax: 0,
-    latitude: 0,
-    longitude: 0
+    latitude: getLatLongByName(name).latitude,
+    longitude: getLatLongByName(name).longitude
   }))
 );
 const isShowLocaionModal = ref(false);
 const loading = ref(true);
 const error = ref<string | null>(null);
 
-// ----------------------------------------------------------------
-// 5. 新增：排序的狀態 (State)
-// ----------------------------------------------------------------
 type SortKey = 'name' | 'total' | 'gym' | 'swim';
-// 預設排序方式：依名稱
 const sortBy = ref<SortKey>('name');
-// 預設排序方向：升冪 (asc)
 const sortDirection = ref<'asc' | 'desc'>('asc');
 
-// ----------------------------------------------------------------
-// 6. 新增：切換排序方向的函式
-// ----------------------------------------------------------------
 function toggleSortDirection() {
   sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc';
 }
 
-// ----------------------------------------------------------------
-// 7. 新增：'computed' 計算屬性，用來回傳排序後的陣列
-// ----------------------------------------------------------------
 const sortedData = computed(() => {
-  // 1. 建立一個 data ref 的 "淺拷貝 (shallow copy)"
-  //    我們*永遠*不該直接修改原始的 'data' ref
   const dataCopy = [...data.value];
 
-  // 2. 執行排序
   dataCopy.sort((a, b) => {
     let comparison = 0;
 
-    // 3. 根據 sortBy.value 決定如何比較
     switch (sortBy.value) {
       case 'name':
-        // 使用 localeCompare 才能正確排序中文 (依筆劃)
         comparison = a.name.localeCompare(b.name, 'zh-Hant');
         break;
       case 'total': {
@@ -156,17 +169,12 @@ const sortedData = computed(() => {
         break;
     }
 
-    // 4. 根據 sortDirection 決定是否反轉
-    //    如果 comparison 是 0 (兩者相等)，反轉也沒差
     return sortDirection.value === 'asc' ? comparison : -comparison;
   });
 
   return dataCopy;
 });
 
-// ----------------------------------------------------------------
-// 您的 fetchAllData 函式 (完全不變)
-// ----------------------------------------------------------------
 async function fetchTaipeiSportsCenters() {
   const apiUrl = '/api/TaipeiSportsCenters';
   try {
@@ -187,8 +195,8 @@ async function fetchTaipeiSportsCenters() {
       swimPeopleNumMax: item.swMaxPeopleNum,
       gymPeopleNum: item.gymPeopleNum,
       gymPeopleNumMax: item.gymMaxPeopleNum,
-      latitude: 0,
-      longitude: 0
+      latitude: getLatLongByName(item.lidName).latitude,
+      longitude: getLatLongByName(item.lidName).longitude
     }));
     return dataItems;
   } catch (err) {
@@ -229,8 +237,8 @@ async function fetchNanGangSportsCenters() {
       swimPeopleNumMax: rawData.swim[1],
       gymPeopleNum: rawData.gym[0],
       gymPeopleNumMax: rawData.gym[1],
-      latitude: 0,
-      longitude: 0
+      latitude: getLatLongByName('南港').latitude,
+      longitude: getLatLongByName('南港').longitude
     };
     dataItems.push(dataItem);
     return dataItems;
@@ -264,6 +272,7 @@ async function fetchAllData() {
       error.value += result.reason + ' ';
     }
   });
+  console.log('Fetched data:', data.value);
   loading.value = false;
 }
 let intervalId: number | null = null;
