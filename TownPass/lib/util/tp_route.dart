@@ -127,7 +127,8 @@ abstract class TPRoute {
       name: phoneCallUserAgreement,
       page: () => const PhoneCallUserAgreementView(),
       binding: BindingsBuilder(() {
-        Get.put<PhoneCallUserAgreementViewController>(PhoneCallUserAgreementViewController());
+        Get.put<PhoneCallUserAgreementViewController>(
+            PhoneCallUserAgreementViewController());
       }),
     ),
     GetPage(
