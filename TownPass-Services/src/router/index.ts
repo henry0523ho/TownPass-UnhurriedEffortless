@@ -45,7 +45,8 @@ import FeePaymentHistoryDetailView from '@/views/FeePaymentHistoryDetailView.vue
 import FeePaymentScanView from '@/views/FeePaymentScanView.vue';
 import FeePaymentStepView from '@/views/FeePaymentStepView.vue';
 import FeePaymentFinishedView from '@/views/FeePaymentFinishedView.vue';
-import TestView from '@/views/TestView.vue';
+import FacilityPopulationView from '@/views/FacilityPopulationView.vue';
+import FacilityMapView from '@/views/FacilityMapView.vue';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -54,12 +55,20 @@ const router = createRouter({
   },
   routes: [
     {
-      path: '/test',
-      name: 'test',
+      path: '/facility-map',
+      name: 'facility-map',
       meta: {
-        title: '測試頁面'
+        title: '地圖頁面'
       },
-      component: TestView
+      component: FacilityMapView
+    },
+    {
+      path: '/facility-population',
+      name: 'facility-population',
+      meta: {
+        title: '運動中心即時人數'
+      },
+      component: FacilityPopulationView
     },
     {
       path: '/',

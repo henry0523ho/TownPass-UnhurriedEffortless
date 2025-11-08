@@ -37,11 +37,11 @@ extension MyServiceIdExt on MyServiceItemId {
   MyServiceItem get item {
     return switch (this) {
       MyServiceItemId.test => MyServiceItem(
-          title: '測試服務',
-          description: '這是一個測試服務項目',
+          title: '運動中心即時人數',
+          description: '查看運動中心場館即時人數',
           icon: Assets.svg.iconSurveyFeedback.svg(),
-          category: MyServiceCategory.other,
-          destinationUrl: 'http://10.0.2.2:5173/test',
+          category: MyServiceCategory.cityLife,
+          destinationUrl: 'http://10.0.2.2:5173/facility-population',
         ),
       MyServiceItemId.dedicatedLine => MyServiceItem(
           title: '1999',
