@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
-import axios, { AxiosError } from 'axios';
+import axios from 'axios';
 type DataItem = {
   name: string;
-  swimPeopleNum: number;
-  swimPeopleNumMax: number;
-  gymPeopleNum: number;
-  gymPeopleNumMax: number;
+  swimPeopleNum?: number;
+  swimPeopleNumMax?: number;
+  gymPeopleNum?: number;
+  gymPeopleNumMax?: number;
   latitude: number;
   longitude: number;
 };
@@ -18,7 +18,6 @@ async function fetchTaipeiSportsCenters() {
   const apiUrl = '/api/TaipeiSportsCenters';
   try {
     const response = await axios.post(apiUrl);
-    console.log('TaipeiSportsCenters response data:', response);
     const rawData: {
       locationPeopleNums: {
         LID: string;
@@ -56,10 +55,55 @@ async function fetchTaipeiSportsCenters() {
   }
 }
 
+async function fetchNanGangSportsCenters() {
+  const apiUrl = '/api/NanGangSportsCenter';
+  try {
+    const response = await axios.post(apiUrl, null, {
+      headers: {
+        Accept: 'application/json, text/javascript, */*; q=0.01',
+        'X-Requested-With': 'XMLHttpRequest',
+        Origin: 'https://ngsc.cyc.org.tw',
+        Referer: 'https://ngsc.cyc.org.tw/'
+      },
+      withCredentials: true
+    });
+    const rawData: {
+      gym: number[];
+      swim: number[];
+    } = response.data;
+    const dataItems: DataItem[] = [];
+    const dataItem: DataItem = {
+      name: '南港',
+      swimPeopleNum: rawData.swim[0],
+      swimPeopleNumMax: rawData.swim[1],
+      gymPeopleNum: rawData.gym[0],
+      gymPeopleNumMax: rawData.gym[1],
+      latitude: 0,
+      longitude: 0
+    };
+    dataItems.push(dataItem);
+    return dataItems;
+  } catch (err) {
+    if (axios.isAxiosError(err)) {
+      if (err.response) {
+        throw Error(
+          `NanGangSportsCenters: Axios response error: ${err.response.status} ${err.response.statusText}`
+        );
+      } else if (err.request) {
+        throw Error('NanGangSportsCenters: Axios request error: No response received');
+      } else {
+        throw Error(`NanGangSportsCenters: Axios error: ${err.message}`);
+      }
+    } else {
+      throw Error('NanGangSportsCenters: Unknown error: ' + String(err));
+    }
+  }
+}
+
 async function fetchAllData() {
   data.value = [];
   error.value = null;
-  const allPromises = [fetchTaipeiSportsCenters()];
+  const allPromises = [fetchTaipeiSportsCenters(), fetchNanGangSportsCenters()];
   const results = await Promise.allSettled(allPromises);
   results.forEach((result) => {
     if (result.status === 'fulfilled' && result.value) {
@@ -73,7 +117,7 @@ async function fetchAllData() {
 }
 let intervalId: number | null = null;
 onMounted(() => {
-  intervalId = setInterval(fetchAllData, 10 * 1000);
+  intervalId = setInterval(fetchAllData, 60 * 1000);
   loading.value = true;
   fetchAllData();
 });

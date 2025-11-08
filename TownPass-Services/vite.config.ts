@@ -14,6 +14,11 @@ export default defineConfig({
         target: 'https://booking-tpsc.sporetrofit.com/Home/loadLocationPeopleNum',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/TaipeiSportsCenter/, '')
+      },
+      '/api/NanGangSportsCenter': {
+        target: 'https://ngsc.cyc.org.tw/api/',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/NanGangSportsCenter/, '')
       }
     }
   },
