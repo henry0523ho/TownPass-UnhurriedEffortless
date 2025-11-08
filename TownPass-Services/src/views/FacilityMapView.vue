@@ -1,129 +1,266 @@
 <script setup lang="ts">
-import FindPlace, { type Place } from '@/components/molecules/FindPlace.vue';
-import SpotList from '@/components/organisms/SpotListView.vue';
-import SpotDetail from '@/components/organisms/SpotDetailView.vue';
 import MessageModal from '@/components/molecules/MessageModal.vue';
 import { useGoogleMapsStore } from '@/stores/googleMaps';
 import axios from 'axios';
-import { onMounted, ref, watch } from 'vue';
+import { onMounted, ref, watch, computed } from 'vue';
 import { MarkerClusterer, SuperClusterAlgorithm } from '@googlemaps/markerclusterer';
 import greenDotIconUrl from '/public/images/map/youbike/mappin-green.svg';
 import defaultFocusIconUrl from '/public/images/map/icon_mappin-garbagetruck-green-pressed.svg';
-import { mappingFormatter, getNestedValue } from '@/utils/spot-formatter';
 
+// ==================== Types ====================
 export interface Spot {
   id: string;
-  /** 站點名稱 */
   name: string;
-  /** 行政區 */
   area: string;
-  /** 地址 */
   address: string;
-  /** 經度 */
   lat: number;
-  /** 緯度 */
   lng: number;
-  /** 距離 */
   distance?: number;
-  /** 詳細資訊 */
-  service_infos?: {
-    title: string;
-    value: { title: string; value: string }[] | string;
-  }[];
-
-  /** 其餘詳細資訊 */
+  swimPeopleNum?: number;
+  swimPeopleNumMax?: number;
+  gymPeopleNum?: number;
+  gymPeopleNumMax?: number;
   [key: string]: any;
 }
 
-const googleMapsStore = useGoogleMapsStore();
+interface DataItem {
+  name: string;
+  swimPeopleNum?: number;
+  swimPeopleNumMax?: number;
+  gymPeopleNum?: number;
+  gymPeopleNumMax?: number;
+  latitude: number;
+  longitude: number;
+  address: string;
+}
 
-const selectedSearchData = ref<Place>({
-  id: '',
-  name: '',
-  icon: '',
-  agency: '',
-  type: '',
-  request_url: '',
-  data_path: ''
-});
+interface DistrictCoordinates {
+  latitude: number;
+  longitude: number;
+}
 
-/** 搜尋結果 */
+// ==================== Constants ====================
+const DISTRICT_COORDINATES: Record<string, DistrictCoordinates> = {
+  北投: { latitude: 25.116499631184173, longitude: 121.50983145269343 },
+  大安: { latitude: 25.0207374694988, longitude: 121.54575719476065 },
+  大同: { latitude: 25.065371179032034, longitude: 121.51619920587748 },
+  中正: { latitude: 25.038517677819875, longitude: 121.51933133187974 },
+  內湖: { latitude: 25.078155736925535, longitude: 121.57476476642667 },
+  士林: { latitude: 25.08942122491574, longitude: 121.52156330976973 },
+  松山: { latitude: 25.04879199681975, longitude: 121.58187521229682 },
+  萬華: { latitude: 25.047456736404317, longitude: 121.50686764837137 },
+  文山: { latitude: 24.997014158084, longitude: 121.55945597940692 },
+  信義: { latitude: 25.031698544420017, longitude: 121.56676886503183 },
+  中山: { latitude: 25.05484192557673, longitude: 121.5213455316616 },
+  南港: { latitude: 25.04879289615886, longitude: 121.58187402886895 }
+};
+
+const DISTRICT_ADDRESS: Record<string, string> = {
+  北投: '臺北市北投區石牌路一段39巷100號',
+  大安: '臺北市大安區辛亥路三段55號',
+  大同: '臺北市大同區大龍街51號',
+  中正: '臺北市中正區信義路一段1號',
+  內湖: '臺北市內湖區洲子街12號',
+  士林: '臺北市士林區士商路一號',
+  松山: '臺北市松山區敦化北路1號',
+  萬華: '臺北市萬華區西寧南路6-1號',
+  文山: '臺北市文山區興隆路三段222號',
+  信義: '臺北市信義區松勤街100號',
+  中山: '臺北市中山區中山北路二段44巷2號',
+  南港: '臺北市南港區玉成街69號'
+};
+
+const DEFAULT_CENTER = { lat: 25.0325917, lng: 121.5624999 };
+
+// ==================== State ====================
 const searchSpotList = ref<Spot[]>([]);
-/** 視窗下搜尋結果 */
 const filteredSpotList = ref<Spot[]>([]);
 const selectedSpot = ref<Spot | null>(null);
+const loading = ref(true);
+const error = ref<string | null>(null);
+const isMapReady = ref(false);
+const isShowGeoError = ref(false);
 
-/** 是否展開找地點面板 */
-const isExpand = ref(false);
-/** 是否點選展開列表 */
-const isExpandList = ref(false);
-/** 是否點選展開明細 */
-const isExpandDetail = ref(false);
-const isFrom = ref<'spot' | 'list' | ''>('');
-
-let isMapReady = ref(false);
-
-let map: any = null;
-/** 使用者定位 */
-let marker: any = null;
+// Map related state
+let map: google.maps.Map | null = null;
+let marker: google.maps.Marker | null = null;
 let markers: google.maps.Marker[] = [];
-let markerCluster: any = null;
+let markerCluster: MarkerClusterer | null = null;
 
-/**
- * 目前位置
- */
-const currentLocation = ref<{ lat: number; lng: number; results: any[] }>({
-  // 預設經緯度在信義區附近
-  lat: 25.0325917,
-  lng: 121.5624999,
-  results: []
+const currentLocation = ref<{ lat: number; lng: number }>({
+  lat: DEFAULT_CENTER.lat,
+  lng: DEFAULT_CENTER.lng
 });
 
-/**
- * 是否顯示未開啟取用位置權限通知
- */
-let isShowGeoError = ref(false);
+const googleMapsStore = useGoogleMapsStore();
 
+// ==================== Helper Functions ====================
+function getLatLongByName(name: string): DistrictCoordinates {
+  return DISTRICT_COORDINATES[name] || { latitude: 25.0375, longitude: 121.5625 };
+}
+
+function getAddrByName(name: string): string {
+  return DISTRICT_ADDRESS[name] || 'no address';
+}
+
+const navigationUrl = computed(() => {
+  // 檢查 selectedSpot 是否有值
+  if (!selectedSpot.value) {
+    return '#'; // 如果沒有選擇的點，返回一個安全的 'href'
+  }
+  
+  // 使用「地址」來導航 (您程式碼中的 selectedSpot.address)
+  const destination = selectedSpot.value.address;
+  
+  // 關鍵！對地址進行 URL 編碼，處理空格和特殊字元
+  const encodedDestination = encodeURIComponent(destination);
+  
+  // 返回從「目前位置」(省略 origin) 到「目的地」的網址
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodedDestination}&travelmode=driving`;
+});
+
+async function fetchTaipeiSportsCenters() {
+  const apiUrl = '/api/TaipeiSportsCenters';
+  try {
+    const response = await axios.post(apiUrl);
+    const rawData: {
+      locationPeopleNums: {
+        LID: string;
+        lidName: string;
+        swPeopleNum: number;
+        swMaxPeopleNum: number;
+        gymPeopleNum: number;
+        gymMaxPeopleNum: number;
+        address: string;
+      }[];
+    } = response.data;
+    const dataItems = rawData.locationPeopleNums.map((item) => ({
+      name: item.lidName,
+      swimPeopleNum: item.swPeopleNum,
+      swimPeopleNumMax: item.swMaxPeopleNum,
+      gymPeopleNum: item.gymPeopleNum,
+      gymPeopleNumMax: item.gymMaxPeopleNum,
+      latitude: getLatLongByName(item.lidName).latitude,
+      longitude: getLatLongByName(item.lidName).longitude,
+      address: getAddrByName(item.lidName)
+    }));
+    return dataItems;
+  } catch (err) {
+    if (axios.isAxiosError(err)) {
+      if (err.response) {
+        throw Error(
+          `TaipeiSportsCenters: Axios response error: ${err.response.status} ${err.response.statusText}`
+        );
+      } else if (err.request) {
+        throw Error('TaipeiSportsCenters: Axios request error: No response received');
+      } else {
+        throw Error(`TaipeiSportsCenters: Axios error: ${err.message}`);
+      }
+    } else {
+      throw Error('TaipeiSportsCenters: Unknown error: ' + String(err));
+    }
+  }
+}
+
+async function fetchNanGangSportsCenters() {
+  const apiUrl = '/api/NanGangSportsCenter';
+  try {
+    const response = await axios.post(apiUrl, null, {
+      headers: {
+        Accept: 'application/json, text/javascript, */*; q=0.01',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      withCredentials: true
+    });
+    const rawData: {
+      gym: number[];
+      swim: number[];
+    } = response.data;
+    const dataItems: DataItem[] = [];
+    const dataItem: DataItem = {
+      name: '南港',
+      swimPeopleNum: rawData.swim[0],
+      swimPeopleNumMax: rawData.swim[1],
+      gymPeopleNum: rawData.gym[0],
+      gymPeopleNumMax: rawData.gym[1],
+      latitude: getLatLongByName('南港').latitude,
+      longitude: getLatLongByName('南港').longitude,
+      address: getAddrByName('南港')
+    };
+    dataItems.push(dataItem);
+    return dataItems;
+  } catch (err) {
+    if (axios.isAxiosError(err)) {
+      if (err.response) {
+        throw Error(
+          `NanGangSportsCenters: Axios response error: ${err.response.status} ${err.response.statusText}`
+        );
+      } else if (err.request) {
+        throw Error('NanGangSportsCenters: Axios request error: No response received');
+      } else {
+        throw Error(`NanGangSportsCenters: Axios error: ${err.message}`);
+      }
+    } else {
+      throw Error('NanGangSportsCenters: Unknown error: ' + String(err));
+    }
+  }
+}
+
+async function fetchAllData() {
+  // const allPromises = [fetchTaipeiSportsCenters(), fetchNanGangSportsCenters()];
+  const allPromises = [fetchTaipeiSportsCenters()];
+  const results = await Promise.allSettled(allPromises);
+
+  const newData: DataItem[] = [];
+  let fetchError = '';
+
+  results.forEach((result) => {
+    if (result.status === 'fulfilled' && result.value) {
+      newData.push(...result.value);
+    } else if (result.status === 'rejected') {
+      console.error('Error fetching data:', result.reason);
+      fetchError += result.reason + ' ';
+    }
+  });
+
+  if (fetchError) {
+    if (loading.value) {
+      error.value = fetchError.trim();
+      searchSpotList.value = [];
+    } else {
+      console.error('Background refresh failed, keeping stale data:', fetchError.trim());
+    }
+  } else {
+    searchSpotList.value = newData.map((item) => ({
+      id: 'taipei-sports-centers',
+      name: item.name,
+      lat: item.latitude,
+      lng: item.longitude,
+      area: '',
+      address: item.address,
+      swimPeopleNum: item.swimPeopleNum,
+      swimPeopleNumMax: item.swimPeopleNumMax,
+      gymPeopleNum: item.gymPeopleNum,
+      gymPeopleNumMax: item.gymPeopleNumMax
+    }));
+    error.value = null;
+    console.log('Fetched data (seamlessly updated):', searchSpotList.value);
+  }
+
+  loading.value = false;
+}
+
+// ==================== Lifecycle ====================
 onMounted(() => {
+  fetchAllData();
   initMap(currentLocation.value.lat, currentLocation.value.lng);
 });
 
-const handleExpandChange = (newValue: boolean) => {
-  isExpand.value = newValue;
-};
-
-const handleSearchChange = async (data: Place) => {
-  if (!data) {
-    return;
-  }
-  console.log('handleSearchChange:', data);
-  searchSpotList.value = [];
-  selectedSearchData.value = data;
-
-  switch (data.data_type) {
-    case 'api':
-    case 'json':
-      searchSpotList.value = await fetchAndFormatData(
-        data.request_url,
-        mappingFormatter,
-        data.format_fields,
-        data.service_infos,
-        data.data_path
-      );
-      break;
-    case 'csv':
-      break;
-    default:
-      break;
-  }
-
-  console.log('searchSpotList:', searchSpotList.value);
-};
-
+// ==================== Map Functions ====================
 const setMapHeight = () => {
   const mapElement = document.getElementById('map');
   if (mapElement) {
-    mapElement.style.height = `${window.innerHeight - 88}px`;
+    mapElement.style.height = `${window.innerHeight}px`;
   }
 };
 
@@ -203,51 +340,22 @@ const successCallback = (position: GeolocationPosition) => {
   currentLocation.value.lat = position.coords.latitude;
   currentLocation.value.lng = position.coords.longitude;
 
-  // 使用者目前位置
-  marker.setPosition(new google.maps.LatLng(position.coords.latitude, position.coords.longitude));
-  map.setCenter(marker.getPosition()!);
+  if (marker && map) {
+    marker.setPosition(new google.maps.LatLng(position.coords.latitude, position.coords.longitude));
+    map.setCenter(marker.getPosition()!);
+  }
 };
+
 const errorCallback = (error: any) => {
   console.log(error);
   if (error.code === 1) {
-    // 使用者未開啟定位
     isShowGeoError.value = true;
   }
 };
 
-const fetchAndFormatData = async (
-  url: string,
-  formatter: (item: any, formatFields: any, serviceInfos: any[]) => Spot,
-  formatFields: any,
-  serviceInfos: any,
-  dataPath: string
-) => {
-  try {
-    const response = await axios.get(url);
-    return formatSpotData(response.data, formatter, formatFields, serviceInfos, dataPath);
-  } catch (error) {
-    console.error(`Failed to fetch data from ${url}:`, error);
-    return [];
-  }
-};
-
-const formatSpotData = (
-  data: any,
-  formatter: (item: any, formatFields: any, serviceInfos: any[]) => Spot,
-  formatFields: any,
-  serviceInfos: any,
-  dataPath: string
-): Spot[] => {
-  // 動態解析 dataPath，如果沒有提供 dataPath，默認使用 response
-  const targetData = dataPath ? getNestedValue(data, dataPath) : data;
-  return targetData.map((item: any) => formatter(item, formatFields, serviceInfos));
-};
-
 const updateMarkers = async () => {
-  if (!selectedSearchData.value.id) {
-    clearMarkers();
-    return;
-  }
+  console.log('Updating markers based on current map bounds.');
+  if (!map) return;
 
   const bounds = map.getBounds();
   if (!bounds) return;
@@ -351,7 +459,7 @@ const updateMarkers = async () => {
     }
   });
 };
-
+updateMarkers();
 const clearMarkers = () => {
   markers.forEach((marker) => marker.setMap(null));
   markers = [];
@@ -366,48 +474,47 @@ watch(searchSpotList, updateMarkers);
 </script>
 
 <template>
-  <div class="pb-8 h-screen">
-    <div
+  <div class="absolute h-screen w-screen">
+    <!-- <div
       :class="{ hidden: isExpandList || isExpandDetail, visible: !isExpandList && !isExpandDetail }"
-    >
+      class="h-full w-full"
+    > -->
+    <div class="h-full w-full">
       <!-- 找地點搜尋框 -->
-      <div class="flex items-center">
+      <!-- <div class="flex items-center">
         <FindPlace
           @onSearchChange="(value) => handleSearchChange(value)"
           @update:isExpand="handleExpandChange"
         />
-      </div>
+      </div> -->
       <!-- 地圖 -->
-      <div class="relative flex-1" :class="{ hidden: isExpand, visible: !isExpand }">
-        <div class="google-map" id="map"></div>
+      <!-- <div class="relative flex-1 h-full w-full" :class="{ hidden: isExpand, visible: !isExpand }"> -->
+      <div class="relative flex-1 h-full w-full">
+        <div class="google-map h-full w-full" id="map" style="height: 100%"></div>
         <div v-if="isMapReady" class="gps" @click="getPositionClick">
           <img src="@/assets/images/gps.png" width="20" alt="" />
         </div>
       </div>
       <!-- 選取的點 -->
-      <div
-        v-if="selectedSearchData.id && !isExpand && selectedSpot"
-        class="floating-box bottom-24 left-[50%] translate-x-[-50%] w-[90%]"
-        @click="
-          isExpandDetail = true;
-          isFrom = 'spot';
-        "
-      >
+      <div v-if="selectedSpot" class="floating-box bottom-24 left-[50%] translate-x-[-50%] w-[90%]">
         <div>
-          <p class="font-bold mb-2">{{ selectedSpot.name }}</p>
+          <p class="font-bold mb-2">{{ selectedSpot.name }}運動中心</p>
           <div class="flex mb-2">
-            <img src="@/assets/images/icon-geo.svg" alt="" />
-            <span class="underline">{{ selectedSpot.address }}</span>
+            <img src="@/assets/images/icon-geo.svg" alt="Location" />
+            <a :href="navigationUrl" target="_blank">
+              <span class="underline">{{ selectedSpot.address }}</span>
+            </a>
           </div>
-          <!-- custom template -->
           <div class="flex text-grey-500">
-            <span>{{ selectedSpot.distance }}公里</span>
+            <!-- <span>{{ selectedSpot.distance }}公里</span> -->
+            <span>健身房{{ selectedSpot.gymPeopleNum }}/{{selectedSpot.gymPeopleNumMax}}</span>
+            <span>游泳池{{ selectedSpot.swimPeopleNum }}/{{selectedSpot.swimPeopleNumMax}}</span>
           </div>
         </div>
-        <img src="@/assets/images/down-icon.svg" class="-rotate-90" alt="" />
+        <img src="@/assets/images/down-icon.svg" class="-rotate-90" alt="Expand" />
       </div>
       <!-- 底部搜尋結果 -->
-      <div v-if="selectedSearchData.id && !isExpand" class="floating-box bottom-0 w-full">
+      <!-- <div v-if="selectedSearchData.id && !isExpand" class="floating-box bottom-0 w-full">
         <div class="flex items-center">
           <span class="font-bold mr-2">{{ selectedSearchData.name }}</span>
           <div class="text-primary-500 border border-primary-500 rounded-full px-2">
@@ -415,10 +522,10 @@ watch(searchSpotList, updateMarkers);
           </div>
         </div>
         <a class="text-primary-500" @click="isExpandList = true">展開列表</a>
-      </div>
+      </div> -->
     </div>
     <!-- 搜尋結果列表 -->
-    <SpotList
+    <!-- <SpotList
       v-if="isExpandList"
       :selectedSearchData="selectedSearchData"
       :filteredSpotList="filteredSpotList"
@@ -430,9 +537,9 @@ watch(searchSpotList, updateMarkers);
           isFrom = 'list';
         }
       "
-    />
+    /> -->
     <!-- 搜尋結果明細 -->
-    <SpotDetail
+    <!-- <SpotDetail
       v-if="selectedSpot && isExpandDetail && isFrom"
       :selectedSearchData="selectedSearchData"
       :selectedSpot="selectedSpot"
@@ -446,7 +553,7 @@ watch(searchSpotList, updateMarkers);
           isFrom = '';
         }
       "
-    />
+    /> -->
   </div>
 
   <!-- geo modal -->
@@ -468,7 +575,7 @@ watch(searchSpotList, updateMarkers);
 <style lang="postcss" scoped>
 .google-map {
   width: 100%;
-  height: 400px;
+  height: 100%;
 }
 
 .marker {

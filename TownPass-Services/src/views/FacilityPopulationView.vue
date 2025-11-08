@@ -6,9 +6,7 @@
       <h2 class="text-3xl font-bold text-gray-800 m-0">台北市運動中心即時人數</h2>
 
       <div class="sort-controls">
-                <button @click="cycleSortBy" class="sort-by-btn">
-          🔁 {{ sortByText }}
-        </button>
+        <button @click="cycleSortBy" class="sort-by-btn">🔁 {{ sortByText }}</button>
         <button @click="toggleSortDirection" class="sort-direction-btn">
           {{ sortDirection === 'asc' ? '🔼 升冪' : '🔽 降冪' }}
         </button>
@@ -49,7 +47,7 @@
         class="center-card rounded-2xl p-6 bg-white shadow-md hover:shadow-xl hover:-translate-y-1.5 transition-all duration-200 ease-out"
       >
         <h3 class="mt-0 mb-4 text-gray-900 text-2xl font-semibold border-b border-gray-100 pb-3.5">
-          {{ center.name }}
+          {{ center.name }}運動中心
         </h3>
 
         <div class="facility-status mb-5 last:mb-0">
@@ -195,7 +193,7 @@ function toggleSortDirection() {
   sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc';
 }
 
-// --- 
+// ---
 // 修改點 2：
 // 新增排序邏輯
 // ---
@@ -390,7 +388,7 @@ async function fetchAllData() {
     }
   } else {
     data.value = newData;
-    error.value = null; 
+    error.value = null;
     console.log('Fetched data (seamlessly updated):', data.value);
   }
 

@@ -9,6 +9,8 @@ import 'package:town_pass/gen/assets.gen.dart';
 import 'package:town_pass/util/tp_app_bar.dart';
 import 'package:town_pass/util/tp_colors.dart';
 import 'package:town_pass/util/web_message_handler/tp_web_message_listener.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'dart:io';
 
 class WebViewArgument {
   final String? url;
@@ -99,6 +101,100 @@ class TPWebView extends StatelessWidget {
           return GeolocationPermissionShowPromptResponse(origin: origin, allow: true, retain: true);
         },
         onCloseWindow: (_) => Get.back(),
+        onCreateWindow: (controller, createWindowAction) async {
+          final uri = createWindowAction.request.url;
+
+          if (uri != null) {
+            String urlString = uri.toString();
+
+            // 檢查是否是 http/https 或其他已知協定
+            if (urlString.startsWith('http://') ||
+                urlString.startsWith('https://') ||
+                urlString.startsWith('tel:') ||
+                urlString.startsWith('mailto:') ||
+                urlString.startsWith('sms:')) {
+              
+              try {
+                if (await canLaunchUrl(uri)) {
+                  // 強制在 App 外部開啟 (例如：瀏覽器、地圖 App)
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                }
+              } catch (e) {
+                debugPrint("Could not launch created window URL: $e");
+              }
+              
+              // 告知 webview 我們已經處理了，"不要" 建立新視窗
+              // 這會阻止 webview 繼續載入，從而避免 intent 錯誤
+              return true; 
+            }
+          }
+
+          // 對於其他情況 (如果有的話)，允許 webview 建立新視窗
+          // 但在您目前的情境中，您可能希望一律阻止
+          return false;
+        },
+        shouldOverrideUrlLoading: (controller, navigationAction) async {
+          final uri = navigationAction.request.url;
+
+          if (uri == null) {
+            // 沒有 URL，取消導航
+            return NavigationActionPolicy.CANCEL;
+          }
+
+          String urlString = uri.toString();
+          // `url` 是您從 Get.arguments 傳入的 Vue 應用程式的初始 URL
+          final initialHost = WebUri(url).host;
+
+          // 1. 處理 Android 的 intent://
+          // 這是您遇到的 Google Maps 連結
+          if (urlString.startsWith('intent://')) {
+            try {
+              // 嘗試使用 url_launcher 啟動
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+                // 成功啟動，阻止 WebView 載入
+                return NavigationActionPolicy.CANCEL;
+              }
+            } catch (e) {
+              debugPrint("Could not launch intent URL: $e");
+              // 啟動失敗，也阻止 WebView 載入
+              return NavigationActionPolicy.CANCEL;
+            }
+          }
+
+          // 2. 處理其他應在外部開啟的協定 (電話、簡訊、Email)
+          if (urlString.startsWith('tel:') ||
+              urlString.startsWith('mailto:') ||
+              urlString.startsWith('sms:')) {
+            try {
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri);
+              }
+            } catch (e) {
+              debugPrint("Error launching URL: $e");
+            }
+            // 阻止 WebView 載入
+            return NavigationActionPolicy.CANCEL;
+          }
+
+          // 3. 處理外部網站 (http/https)
+          // 如果載入的 host (域名) 不是您 Vue App 的 host，就用外部瀏覽器開啟
+          if ((urlString.startsWith('http://') || urlString.startsWith('https://')) &&
+              uri.host != initialHost) {
+            try {
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
+            } catch (e) {
+              debugPrint("Error launching external URL: $e");
+            }
+            // 阻止 WebView 載入
+            return NavigationActionPolicy.CANCEL;
+          }
+
+          // 4. 對於所有其他情況 (例如您 App 內部的 Vue 路由切換)，允許 WebView 載入
+          return NavigationActionPolicy.ALLOW;
+        },
       ),
     );
   }

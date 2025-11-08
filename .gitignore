@@ -126,6 +126,7 @@ coverage
 #======================================
 **/devtools_options.yaml
 **/android/**/problems-report.html
+**/.env
 
 #===========================
 # Firebase specific files and directories
