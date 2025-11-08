@@ -35,8 +35,17 @@ export interface Spot {
   [key: string]: any;
 }
 
-const googleMapsStore = useGoogleMapsStore();
-
+type DataItem = {
+  name: string;
+  swimPeopleNum?: number;
+  swimPeopleNumMax?: number;
+  gymPeopleNum?: number;
+  gymPeopleNumMax?: number;
+  latitude: number;
+  longitude: number;
+};
+/** 搜尋結果 */
+const searchSpotList = ref<Spot[]>([]);
 const selectedSearchData = ref<Place>({
   id: '',
   name: '',
@@ -46,9 +55,180 @@ const selectedSearchData = ref<Place>({
   request_url: '',
   data_path: ''
 });
+const loading = ref(true);
+const error = ref<string | null>(null);
 
-/** 搜尋結果 */
-const searchSpotList = ref<Spot[]>([]);
+function getLatLongByName(name: string): { latitude: number; longitude: number } {
+  switch (name) {
+    case '北投':
+      return { latitude: 25.116499631184173, longitude: 121.50983145269343 };
+    case '大安':
+      return { latitude: 25.0207374694988, longitude: 121.54575719476065 };
+    case '大同':
+      return { latitude: 25.065371179032034, longitude: 121.51619920587748 };
+    case '中正':
+      return { latitude: 25.038517677819875, longitude: 121.51933133187974 };
+    case '內湖':
+      return { latitude: 25.078155736925535, longitude: 121.57476476642667 };
+    case '士林':
+      return { latitude: 25.08942122491574, longitude: 121.52156330976973 };
+    case '松山':
+      return { latitude: 25.04879199681975, longitude: 121.58187521229682 };
+    case '萬華':
+      return { latitude: 25.047456736404317, longitude: 121.50686764837137 };
+    case '文山':
+      return { latitude: 24.997014158084, longitude: 121.55945597940692 };
+    case '信義':
+      return { latitude: 25.031698544420017, longitude: 121.56676886503183 };
+    case '中山':
+      return { latitude: 25.05484192557673, longitude: 121.5213455316616 };
+    case '南港':
+      return { latitude: 25.04879289615886, longitude: 121.58187402886895 };
+    default:
+      return { latitude: 25.0375, longitude: 121.5625 };
+  }
+}
+
+async function fetchTaipeiSportsCenters() {
+  const apiUrl = '/api/TaipeiSportsCenters';
+  try {
+    const response = await axios.post(apiUrl);
+    const rawData: {
+      locationPeopleNums: {
+        LID: string;
+        lidName: string;
+        swPeopleNum: number;
+        swMaxPeopleNum: number;
+        gymPeopleNum: number;
+        gymMaxPeopleNum: number;
+      }[];
+    } = response.data;
+    const dataItems = rawData.locationPeopleNums.map((item) => ({
+      name: item.lidName,
+      swimPeopleNum: item.swPeopleNum,
+      swimPeopleNumMax: item.swMaxPeopleNum,
+      gymPeopleNum: item.gymPeopleNum,
+      gymPeopleNumMax: item.gymMaxPeopleNum,
+      latitude: getLatLongByName(item.lidName).latitude,
+      longitude: getLatLongByName(item.lidName).longitude
+    }));
+    return dataItems;
+  } catch (err) {
+    if (axios.isAxiosError(err)) {
+      if (err.response) {
+        throw Error(
+          `TaipeiSportsCenters: Axios response error: ${err.response.status} ${err.response.statusText}`
+        );
+      } else if (err.request) {
+        throw Error('TaipeiSportsCenters: Axios request error: No response received');
+      } else {
+        throw Error(`TaipeiSportsCenters: Axios error: ${err.message}`);
+      }
+    } else {
+      throw Error('TaipeiSportsCenters: Unknown error: ' + String(err));
+    }
+  }
+}
+
+async function fetchNanGangSportsCenters() {
+  const apiUrl = '/api/NanGangSportsCenter';
+  try {
+    const response = await axios.post(apiUrl, null, {
+      headers: {
+        Accept: 'application/json, text/javascript, */*; q=0.01',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      withCredentials: true
+    });
+    const rawData: {
+      gym: number[];
+      swim: number[];
+    } = response.data;
+    const dataItems: DataItem[] = [];
+    const dataItem: DataItem = {
+      name: '南港',
+      swimPeopleNum: rawData.swim[0],
+      swimPeopleNumMax: rawData.swim[1],
+      gymPeopleNum: rawData.gym[0],
+      gymPeopleNumMax: rawData.gym[1],
+      latitude: getLatLongByName('南港').latitude,
+      longitude: getLatLongByName('南港').longitude
+    };
+    dataItems.push(dataItem);
+    return dataItems;
+  } catch (err) {
+    if (axios.isAxiosError(err)) {
+      if (err.response) {
+        throw Error(
+          `NanGangSportsCenters: Axios response error: ${err.response.status} ${err.response.statusText}`
+        );
+      } else if (err.request) {
+        throw Error('NanGangSportsCenters: Axios request error: No response received');
+      } else {
+        throw Error(`NanGangSportsCenters: Axios error: ${err.message}`);
+      }
+    } else {
+      throw Error('NanGangSportsCenters: Unknown error: ' + String(err));
+    }
+  }
+}
+
+async function fetchAllData() {
+  // const allPromises = [fetchTaipeiSportsCenters(), fetchNanGangSportsCenters()];
+  const allPromises = [fetchTaipeiSportsCenters()];
+  const results = await Promise.allSettled(allPromises);
+
+  const newData: DataItem[] = [];
+  let fetchError = '';
+
+  results.forEach((result) => {
+    if (result.status === 'fulfilled' && result.value) {
+      newData.push(...result.value);
+    } else if (result.status === 'rejected') {
+      console.error('Error fetching data:', result.reason);
+      fetchError += result.reason + ' ';
+    }
+  });
+
+  if (fetchError) {
+    if (loading.value) {
+      error.value = fetchError.trim();
+      searchSpotList.value = [];
+    } else {
+      console.error('Background refresh failed, keeping stale data:', fetchError.trim());
+    }
+  } else {
+    searchSpotList.value = newData.map((item) => ({
+      id: 'taipei-sports-centers',
+      name: item.name,
+      lat: item.latitude,
+      lng: item.longitude,
+      area: '',
+      address: '',
+      swimPeopleNum: item.swimPeopleNum,
+      swimPeopleNumMax: item.swimPeopleNumMax,
+      gymPeopleNum: item.gymPeopleNum,
+      gymPeopleNumMax: item.gymPeopleNumMax
+    }));
+    selectedSearchData.value = {
+      id: 'taipei-sports-centers',
+      name: '台北市體育館',
+      icon: '',
+      agency: '台北市政府體育局',
+      type: 'sports_center',
+      request_url: '',
+      data_path: ''
+    };
+    error.value = null;
+    console.log('Fetched data (seamlessly updated):', searchSpotList.value);
+  }
+
+  loading.value = false;
+}
+fetchAllData();
+
+const googleMapsStore = useGoogleMapsStore();
+
 /** 視窗下搜尋結果 */
 const filteredSpotList = ref<Spot[]>([]);
 const selectedSpot = ref<Spot | null>(null);
@@ -88,42 +268,42 @@ onMounted(() => {
   initMap(currentLocation.value.lat, currentLocation.value.lng);
 });
 
-const handleExpandChange = (newValue: boolean) => {
-  isExpand.value = newValue;
-};
+// const handleExpandChange = (newValue: boolean) => {
+//   isExpand.value = newValue;
+// };
 
-const handleSearchChange = async (data: Place) => {
-  if (!data) {
-    return;
-  }
-  console.log('handleSearchChange:', data);
-  searchSpotList.value = [];
-  selectedSearchData.value = data;
+// const handleSearchChange = async (data: Place) => {
+//   if (!data) {
+//     return;
+//   }
+//   console.log('handleSearchChange:', data);
+//   searchSpotList.value = [];
+//   selectedSearchData.value = data;
 
-  switch (data.data_type) {
-    case 'api':
-    case 'json':
-      searchSpotList.value = await fetchAndFormatData(
-        data.request_url,
-        mappingFormatter,
-        data.format_fields,
-        data.service_infos,
-        data.data_path
-      );
-      break;
-    case 'csv':
-      break;
-    default:
-      break;
-  }
+//   switch (data.data_type) {
+//     case 'api':
+//     case 'json':
+//       searchSpotList.value = await fetchAndFormatData(
+//         data.request_url,
+//         mappingFormatter,
+//         data.format_fields,
+//         data.service_infos,
+//         data.data_path
+//       );
+//       break;
+//     case 'csv':
+//       break;
+//     default:
+//       break;
+//   }
 
-  console.log('searchSpotList:', searchSpotList.value);
-};
+//   console.log('searchSpotList:', searchSpotList.value);
+// };
 
 const setMapHeight = () => {
   const mapElement = document.getElementById('map');
   if (mapElement) {
-    mapElement.style.height = `${window.innerHeight - 88}px`;
+    mapElement.style.height = `${window.innerHeight}px`;
   }
 };
 
@@ -245,10 +425,11 @@ const formatSpotData = (
 
 const updateMarkers = async () => {
   if (!selectedSearchData.value.id) {
+    console.log('No selected search data, clearing markers.');
     clearMarkers();
     return;
   }
-
+  console.log('Updating markers based on current map bounds.');
   const bounds = map.getBounds();
   if (!bounds) return;
 
@@ -351,7 +532,7 @@ const updateMarkers = async () => {
     }
   });
 };
-
+updateMarkers();
 const clearMarkers = () => {
   markers.forEach((marker) => marker.setMap(null));
   markers = [];
@@ -366,20 +547,23 @@ watch(searchSpotList, updateMarkers);
 </script>
 
 <template>
-  <div class="pb-8 h-screen">
-    <div
+  <div class="absolute h-screen w-screen">
+    <!-- <div
       :class="{ hidden: isExpandList || isExpandDetail, visible: !isExpandList && !isExpandDetail }"
-    >
+      class="h-full w-full"
+    > -->
+    <div class="h-full w-full">
       <!-- 找地點搜尋框 -->
-      <div class="flex items-center">
+      <!-- <div class="flex items-center">
         <FindPlace
           @onSearchChange="(value) => handleSearchChange(value)"
           @update:isExpand="handleExpandChange"
         />
-      </div>
+      </div> -->
       <!-- 地圖 -->
-      <div class="relative flex-1" :class="{ hidden: isExpand, visible: !isExpand }">
-        <div class="google-map" id="map"></div>
+      <!-- <div class="relative flex-1 h-full w-full" :class="{ hidden: isExpand, visible: !isExpand }"> -->
+      <div class="relative flex-1 h-full w-full">
+        <div class="google-map h-full w-full" id="map" style="height: 100%"></div>
         <div v-if="isMapReady" class="gps" @click="getPositionClick">
           <img src="@/assets/images/gps.png" width="20" alt="" />
         </div>
@@ -407,7 +591,7 @@ watch(searchSpotList, updateMarkers);
         <img src="@/assets/images/down-icon.svg" class="-rotate-90" alt="" />
       </div>
       <!-- 底部搜尋結果 -->
-      <div v-if="selectedSearchData.id && !isExpand" class="floating-box bottom-0 w-full">
+      <!-- <div v-if="selectedSearchData.id && !isExpand" class="floating-box bottom-0 w-full">
         <div class="flex items-center">
           <span class="font-bold mr-2">{{ selectedSearchData.name }}</span>
           <div class="text-primary-500 border border-primary-500 rounded-full px-2">
@@ -415,10 +599,10 @@ watch(searchSpotList, updateMarkers);
           </div>
         </div>
         <a class="text-primary-500" @click="isExpandList = true">展開列表</a>
-      </div>
+      </div> -->
     </div>
     <!-- 搜尋結果列表 -->
-    <SpotList
+    <!-- <SpotList
       v-if="isExpandList"
       :selectedSearchData="selectedSearchData"
       :filteredSpotList="filteredSpotList"
@@ -430,9 +614,9 @@ watch(searchSpotList, updateMarkers);
           isFrom = 'list';
         }
       "
-    />
+    /> -->
     <!-- 搜尋結果明細 -->
-    <SpotDetail
+    <!-- <SpotDetail
       v-if="selectedSpot && isExpandDetail && isFrom"
       :selectedSearchData="selectedSearchData"
       :selectedSpot="selectedSpot"
@@ -446,7 +630,7 @@ watch(searchSpotList, updateMarkers);
           isFrom = '';
         }
       "
-    />
+    /> -->
   </div>
 
   <!-- geo modal -->
@@ -468,7 +652,7 @@ watch(searchSpotList, updateMarkers);
 <style lang="postcss" scoped>
 .google-map {
   width: 100%;
-  height: 400px;
+  height: 100%;
 }
 
 .marker {
