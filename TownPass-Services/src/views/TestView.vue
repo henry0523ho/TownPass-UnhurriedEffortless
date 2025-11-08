@@ -3,17 +3,10 @@
     <div
       class="header-bar mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6"
     >
-      <h2 class="text-3xl font-bold text-gray-800 m-0">
-        台北市運動中心即時人數
-      </h2>
+      <h2 class="text-3xl font-bold text-gray-800 m-0">台北市運動中心即時人數</h2>
 
-      <div
-        class="sort-controls flex items-center flex-wrap gap-3"
-        role="toolbar"
-      >
-        <label for="sort-select" class="text-sm text-gray-600 whitespace-nowrap"
-          >排序方式：</label
-        >
+      <div class="sort-controls flex items-center flex-wrap gap-3" role="toolbar">
+        <label for="sort-select" class="text-sm text-gray-600 whitespace-nowrap">排序方式：</label>
 
         <div class="relative">
           <select
@@ -86,78 +79,57 @@
         :key="center.name"
         class="center-card rounded-2xl p-6 bg-white shadow-md hover:shadow-xl hover:-translate-y-1.5 transition-all duration-200 ease-out"
       >
-        <h3
-          class="mt-0 mb-4 text-gray-900 text-2xl font-semibold border-b border-gray-100 pb-3.5"
-        >
+        <h3 class="mt-0 mb-4 text-gray-900 text-2xl font-semibold border-b border-gray-100 pb-3.5">
           {{ center.name }}
         </h3>
 
         <div class="facility-status mb-5 last:mb-0">
-          <h4
-            class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2"
-          >
+          <h4 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
             🏊 游泳池
           </h4>
           <div class="status-display flex gap-6">
-            <div
-              class="data-point current-count flex flex-col items-center flex-1"
-            >
-              <span class="label text-sm text-gray-500 mb-1.5"
-                >現在人數</span
-              >
+            <div class="data-point current-count flex flex-col items-center flex-1">
+              <span class="label text-sm text-gray-500 mb-1.5">現在人數</span>
               <strong
                 :class="[
                   'text-4xl font-bold tracking-tight',
                   getStatusColor(center.swimPeopleNum, center.swimPeopleNumMax)
                 ]"
-                >{{ center.swimPeopleNum }}</strong
               >
+                {{ center.swimPeopleNum }}
+              </strong>
             </div>
-            <div
-              class="data-point capacity-count flex flex-col items-center flex-1"
-            >
-              <span class="label text-sm text-gray-500 mb-1.5"
-                >總容量</span
-              >
-              <strong
-                class="text-4xl font-bold tracking-tight text-blue-700"
-                >{{ center.swimPeopleNumMax }}</strong
-              >
+            <div class="data-point capacity-count flex flex-col items-center flex-1">
+              <span class="label text-sm text-gray-500 mb-1.5">總容量</span>
+              <strong class="text-4xl font-bold tracking-tight text-blue-700">
+                {{ center.swimPeopleNumMax }}
+              </strong>
             </div>
           </div>
         </div>
 
         <div class="facility-status mb-5 last:mb-0">
-          <h4
-            class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2"
-          >
+          <h4 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
             🏋️ 健身房
           </h4>
           <div class="status-display flex gap-6">
-            <div
-              class="data-point current-count flex flex-col items-center flex-1"
-            >
-              <span class="label text-sm text-gray-500 mb-1.5"
-                >現在人數</span
-              >
+            <div class="data-point current-count flex flex-col items-center flex-1">
+              <span class="label text-sm text-gray-500 mb-1.5">現在人數</span>
               <strong
                 :class="[
                   'text-4xl font-bold tracking-tight',
                   getStatusColor(center.gymPeopleNum, center.gymPeopleNumMax)
                 ]"
-                >{{ center.gymPeopleNum }}</strong
+              >
+                {{ center.gymPeopleNum }}
+              </strong>
               >
             </div>
-            <div
-              class="data-point capacity-count flex flex-col items-center flex-1"
-            >
-              <span class="label text-sm text-gray-500 mb-1.5"
-                >總容量</span
-              >
-              <strong
-                class="text-4xl font-bold tracking-tight text-blue-700"
-                >{{ center.gymPeopleNumMax }}</strong
-              >
+            <div class="data-point capacity-count flex flex-col items-center flex-1">
+              <span class="label text-sm text-gray-500 mb-1.5">總容量</span>
+              <strong class="text-4xl font-bold tracking-tight text-blue-700">
+                {{ center.gymPeopleNumMax }}
+              </strong>
             </div>
           </div>
         </div>
