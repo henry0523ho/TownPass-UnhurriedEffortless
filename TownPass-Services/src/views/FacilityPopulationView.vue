@@ -46,7 +46,7 @@
 
         <button
           class="border border-gray-300 rounded-lg p-2.5 bg-white text-sm shadow-sm cursor-pointer hover:bg-gray-50 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-150"
-          @click.prevent="isShowLocaionModal = true"
+          @click.prevent="goToMap"
         >
           <img src="@/assets/images/icon-geo.svg" alt="開啟地圖" class="h-5 w-5" />
         </button>
@@ -141,7 +141,8 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, onUnmounted } from 'vue';
 import axios from 'axios';
-
+import { useRouter } from 'vue-router';
+const router = useRouter();
 type DataItem = {
   name: string;
   swimPeopleNum?: number;
@@ -166,6 +167,9 @@ const initialCenters = [
   '中山',
   '南港'
 ];
+function goToMap() {
+  router.push('/facility-map');
+}
 
 function getLatLongByName(name: string): { latitude: number; longitude: number } {
   switch (name) {
