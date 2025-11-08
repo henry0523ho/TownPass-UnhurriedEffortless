@@ -1,59 +1,163 @@
 <template>
-  <div class="center-status-container">
-    <div class="header-bar">
-      <h2>台北市運動中心即時人數</h2>
+  <div class="center-status-container max-w-7xl mx-auto my-8 px-4 sm:px-6">
+    <div
+      class="header-bar mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6"
+    >
+      <h2 class="text-3xl font-bold text-gray-800 m-0">
+        台北市運動中心即時人數
+      </h2>
 
-      <div class="sort-controls">
-        <label for="sort-select">排序方式：</label>
-        <select id="sort-select" v-model="sortBy">
-          <option value="name">依名稱 (筆劃)</option>
-          <option value="total">依總人數</option>
-          <option value="gym">依健身房人數</option>
-          <option value="swim">依游泳池人數</option>
-        </select>
-        <button @click="toggleSortDirection" class="sort-direction-btn">
+      <div
+        class="sort-controls flex items-center flex-wrap gap-3"
+        role="toolbar"
+      >
+        <label for="sort-select" class="text-sm text-gray-600 whitespace-nowrap"
+          >排序方式：</label
+        >
+
+        <div class="relative">
+          <select
+            id="sort-select"
+            v-model="sortBy"
+            class="appearance-none block w-full sm:w-auto bg-white border border-gray-300 rounded-lg py-2.5 px-4 pr-10 text-sm shadow-sm cursor-pointer hover:bg-gray-50 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-150"
+          >
+            <option value="name">依名稱 (筆劃)</option>
+            <option value="total">依總人數</option>
+            <option value="gym">依健身房人數</option>
+            <option value="swim">依游泳池人數</option>
+          </select>
+          <div
+            class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-700"
+          >
+            <svg
+              class="h-5 w-5"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                clip-rule="evenodd"
+              />
+            </svg>
+          </div>
+        </div>
+
+        <button
+          @click="toggleSortDirection"
+          class="sort-direction-btn min-w-[90px] text-left border border-gray-300 rounded-lg py-2.5 px-4 bg-white text-sm shadow-sm cursor-pointer hover:bg-gray-50 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-150"
+        >
           {{ sortDirection === 'asc' ? '🔼 升冪' : '🔽 降冪' }}
         </button>
+
         <button
-          class="absolute top-[23px] -translate-y-[11px] right-2"
+          class="border border-gray-300 rounded-lg p-2.5 bg-white text-sm shadow-sm cursor-pointer hover:bg-gray-50 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-150"
           @click.prevent="isShowLocaionModal = true"
         >
-          <img src="@/assets/images/icon-geo.svg" alt="開啟地圖" />
+          <img src="@/assets/images/icon-geo.svg" alt="開啟地圖" class="h-5 w-5" />
         </button>
       </div>
     </div>
 
-    <div v-if="loading" class="loading-message">正在從API獲取即時數據...</div>
-    <div v-else-if="error" class="error-message">資料加載失敗：{{ error }}</div>
+    <div
+      v-if="loading"
+      class="loading-message flex flex-col justify-center items-center gap-4 py-16 px-8 min-h-[200px] text-lg text-gray-600"
+    >
+      <div
+        class="w-10 h-10 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin"
+      ></div>
+      正在從API獲取即時數據...
+    </div>
 
-    <div v-else-if="data.length > 0" class="center-grid">
-      <div v-for="center in sortedData" :key="center.name" class="center-card">
-        <h3>{{ center.name }}</h3>
+    <div
+      v-else-if="error"
+      class="error-message text-center text-lg text-red-600 p-8 border border-red-600 bg-red-50 rounded-xl"
+    >
+      資料加載失敗：{{ error }}
+    </div>
 
-        <div class="facility-status">
-          <h4>🏊 游泳池</h4>
-          <div class="status-display">
-            <div class="data-point current-count">
-              <span class="label">現在人數</span>
-              <strong>{{ center.swimPeopleNum }}</strong>
+    <div
+      v-else-if="data.length > 0"
+      class="center-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-7"
+    >
+      <div
+        v-for="center in sortedData"
+        :key="center.name"
+        class="center-card rounded-2xl p-6 bg-white shadow-md hover:shadow-xl hover:-translate-y-1.5 transition-all duration-250 ease-out"
+      >
+        <h3
+          class="mt-0 mb-4 text-gray-900 text-2xl font-semibold border-b border-gray-100 pb-3.5"
+        >
+          {{ center.name }}
+        </h3>
+
+        <div class="facility-status mb-5 last:mb-0">
+          <h4
+            class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2"
+          >
+            🏊 游泳池
+          </h4>
+          <div class="status-display flex gap-6">
+            <div
+              class="data-point current-count flex flex-col items-center flex-1"
+            >
+              <span class="label text-sm text-gray-500 mb-1.5"
+                >現在人數</span
+              >
+              <strong
+                :class="[
+                  'text-4xl font-bold tracking-tight',
+                  getStatusColor(center.swimPeopleNum, center.swimPeopleNumMax)
+                ]"
+                >{{ center.swimPeopleNum }}</strong
+              >
             </div>
-            <div class="data-point capacity-count">
-              <span class="label">總容量</span>
-              <strong>{{ center.swimPeopleNumMax }}</strong>
+            <div
+              class="data-point capacity-count flex flex-col items-center flex-1"
+            >
+              <span class="label text-sm text-gray-500 mb-1.5"
+                >總容量</span
+              >
+              <strong
+                class="text-4xl font-bold tracking-tight text-blue-700"
+                >{{ center.swimPeopleNumMax }}</strong
+              >
             </div>
           </div>
         </div>
 
-        <div class="facility-status">
-          <h4>🏋️ 健身房</h4>
-          <div class="status-display">
-            <div class="data-point current-count">
-              <span class="label">現在人數</span>
-              <strong>{{ center.gymPeopleNum }}</strong>
+        <div class="facility-status mb-5 last:mb-0">
+          <h4
+            class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2"
+          >
+            🏋️ 健身房
+          </h4>
+          <div class="status-display flex gap-6">
+            <div
+              class="data-point current-count flex flex-col items-center flex-1"
+            >
+              <span class="label text-sm text-gray-500 mb-1.5"
+                >現在人數</span
+              >
+              <strong
+                :class="[
+                  'text-4xl font-bold tracking-tight',
+                  getStatusColor(center.gymPeopleNum, center.gymPeopleNumMax)
+                ]"
+                >{{ center.gymPeopleNum }}</strong
+              >
             </div>
-            <div class="data-point capacity-count">
-              <span class="label">總容量</span>
-              <strong>{{ center.gymPeopleNumMax }}</strong>
+            <div
+              class="data-point capacity-count flex flex-col items-center flex-1"
+            >
+              <span class="label text-sm text-gray-500 mb-1.5"
+                >總容量</span
+              >
+              <strong
+                class="text-4xl font-bold tracking-tight text-blue-700"
+                >{{ center.gymPeopleNumMax }}</strong
+              >
             </div>
           </div>
         </div>
@@ -144,6 +248,31 @@ const sortDirection = ref<'asc' | 'desc'>('asc');
 function toggleSortDirection() {
   sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc';
 }
+
+// ======================================================
+// !!!! NEW FUNCTION !!!!
+// 根據百分比回傳 Tailwind 顏色 class
+// ======================================================
+function getStatusColor(current?: number, max?: number): string {
+  // 處理 'undefined' 或 max 為 0 的情況
+  if (current === undefined || max === undefined || max === 0) {
+    return 'text-green-500'; // 預設為綠色 (不擁擠)
+  }
+
+  const percentage = current / max;
+
+  if (percentage > 0.5) {
+    return 'text-red-500'; // 80% 以上 (紅色)
+  }
+  if (percentage >= 0.3) {
+    return 'text-orange-500'; // 50% - 80% (橘色)
+  }
+  if (percentage >= 0.15) {
+    return 'text-yellow-500'; // 30% - 50% (黃色)
+  }
+  return 'text-green-500'; // 30% 以下 (綠色)
+}
+// ======================================================
 
 const sortedData = computed(() => {
   const dataCopy = [...data.value];
@@ -287,250 +416,3 @@ onUnmounted(() => {
   }
 });
 </script>
-
-<style scoped>
-/* 8. 新增/修改 CSS 樣式 */
-/* * 8-1. 整體佈局與字體
- * - 使用更現代的 UI 字體堆疊 (Inter, Noto Sans TC)
- * - 增加一個非常淺的背景色，讓卡片更突出
- */
-.center-status-container {
-  font-family:
-    'Inter',
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    Roboto,
-    'Helvetica Neue',
-    Arial,
-    'Noto Sans TC',
-    'Microsoft JhengHei',
-    sans-serif;
-  max-width: 1200px;
-  margin: 2rem auto;
-  padding: 0 1.5rem; /* 稍微增加左右邊距 */
-  box-sizing: border-box;
-}
-
-/* * 8-2. 標題欄 (Header Bar)
- * - 讓標題更醒目
- * - 保持 flex 佈局的彈性
- */
-.header-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-  flex-wrap: wrap;
-  gap: 1.5rem; /* 增加標題和控制項的間距 */
-}
-
-h2 {
-  text-align: left;
-  color: #2c3e50; /* 使用更深的藍灰色 */
-  margin: 0;
-  font-size: 2rem; /* 加大標題 */
-  font-weight: 700;
-}
-
-/* * 8-3. 排序控制項 (Sort Controls)
- * - 統一按鈕和下拉選單的視覺風格
- * - 自訂下拉選單的箭頭
- * - 增加過渡動畫
- */
-.sort-controls {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.sort-controls label {
-  font-size: 0.95rem;
-  color: #555;
-  white-space: nowrap;
-}
-
-.sort-controls select,
-.sort-controls button {
-  padding: 0.6rem 0.85rem;
-  border: 1px solid #dcdfe6; /* 更柔和的邊框色 */
-  border-radius: 8px; /* 增加圓角 */
-  background-color: #fff;
-  font-size: 0.9rem;
-  font-family: inherit;
-  cursor: pointer;
-  transition:
-    all 0.2s ease-in-out;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-}
-
-/* 自訂下拉選單箭頭 */
-.sort-controls select {
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  /* Base64 SVG 箭頭 (向下) */
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-  background-repeat: no-repeat;
-  background-position: right 0.75rem center;
-  background-size: 1em;
-  padding-right: 2.5rem; /* 留出空間給箭頭 */
-}
-
-.sort-controls select:hover,
-.sort-controls button:hover {
-  border-color: #c0c4cc;
-  background-color: #f8f9fa;
-}
-
-.sort-controls select:focus,
-.sort-controls button:focus {
-  outline: none;
-  border-color: #409eff; /* 仿 Element UI 的 focus 色 */
-  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2);
-}
-
-.sort-direction-btn {
-  min-width: 90px;
-  text-align: left;
-  padding-left: 0.75rem;
-  padding-right: 0.75rem;
-}
-
-/* * 8-4. 載入與錯誤訊息 (Loading & Error)
- * - 將 loading 訊息改為 CSS 旋轉動畫
- */
-.loading-message {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  gap: 1rem;
-  font-size: 1.1rem;
-  color: #555;
-  padding: 4rem 2rem;
-  min-height: 200px;
-}
-
-/* CSS 旋轉動畫 (Spinner) */
-.loading-message::before {
-  content: '';
-  display: block;
-  width: 40px;
-  height: 40px;
-  border: 4px solid #e0e0e0;
-  border-top-color: #1976D2; /* 使用新的主題藍色 */
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.error-message {
-  text-align: center;
-  font-size: 1.2rem;
-  color: #d9534f;
-  padding: 2rem;
-  border: 1px solid #d9534f;
-  background-color: #fdf2f2;
-  border-radius: 12px;
-}
-
-/* * 8-5. 卡片網格與卡片 (Grid & Card)
- * - 使用更柔和、更擴散的陰影取代邊框
- * - 增加卡片圓角
- */
-.center-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1.75rem; /* 增加卡片間距 */
-}
-
-.center-card {
-  border: none; /* 移除邊框 */
-  border-radius: 16px; /* 增加圓角 */
-  padding: 1.5rem;
-  background-color: #ffffff;
-  /* 柔和的陰影 */
-  box-shadow: 0 6px 24px rgba(0, 37, 97, 0.07);
-  transition:
-    transform 0.25s ease,
-    box-shadow 0.25s ease;
-}
-
-.center-card:hover {
-  transform: translateY(-6px);
-  /* 懸停時陰影更明顯 */
-  box-shadow: 0 10px 30px rgba(0, 37, 97, 0.1);
-}
-
-/* * 8-6. 卡片內容 (Card Content)
- * - 微調標題、分隔線與數字顏色
- */
-.center-card h3 {
-  margin-top: 0;
-  margin-bottom: 1rem;
-  color: #1a1a1a;
-  font-size: 1.4rem;
-  font-weight: 600;
-  border-bottom: 1px solid #eef2f7; /* 更輕量的分隔線 */
-  padding-bottom: 0.85rem;
-}
-
-.facility-status {
-  margin-bottom: 1.25rem;
-}
-
-.facility-status:last-of-type {
-  margin-bottom: 0;
-}
-
-.facility-status h4 {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #333;
-  margin-top: 0;
-  margin-bottom: 1rem;
-  display: flex; /* 讓 emoji 和文字對齊 */
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.status-display {
-  display: flex;
-  justify-content: space-between;
-  gap: 1.5rem; /* 增加兩個數字間的距離 */
-}
-
-.data-point {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  flex-grow: 1;
-}
-
-.data-point .label {
-  font-size: 0.9rem;
-  color: #666;
-  margin-bottom: 0.35rem;
-}
-
-.data-point strong {
-  font-size: 2.2rem;
-  font-weight: 700; /* 讓數字更粗 */
-  letter-spacing: -0.5px; /* 讓數字更緊湊 */
-}
-
-/* 新的顏色配置 */
-.current-count strong {
-  color: #FF9800; /* "忙碌" 的溫暖橘色 */
-}
-
-.capacity-count strong {
-  color: #1976D2; /* "穩定" 的深藍色 */
-}
-</style>
