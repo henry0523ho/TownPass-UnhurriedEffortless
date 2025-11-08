@@ -361,7 +361,8 @@ async function fetchNanGangSportsCenters() {
 
 // 修正點：移除了你程式碼中重複的一行 async function fetchAllData()
 async function fetchAllData() {
-  const allPromises = [fetchTaipeiSportsCenters(), fetchNanGangSportsCenters()];
+  // const allPromises = [fetchTaipeiSportsCenters(), fetchNanGangSportsCenters()];
+  const allPromises = [fetchTaipeiSportsCenters()];
   const results = await Promise.allSettled(allPromises);
 
   const newData: DataItem[] = [];
