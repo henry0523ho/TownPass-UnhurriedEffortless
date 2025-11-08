@@ -31,6 +31,7 @@ interface DataItem {
   gymPeopleNumMax?: number;
   latitude: number;
   longitude: number;
+  address: string;
 }
 
 interface DistrictCoordinates {
@@ -52,6 +53,21 @@ const DISTRICT_COORDINATES: Record<string, DistrictCoordinates> = {
   信義: { latitude: 25.031698544420017, longitude: 121.56676886503183 },
   中山: { latitude: 25.05484192557673, longitude: 121.5213455316616 },
   南港: { latitude: 25.04879289615886, longitude: 121.58187402886895 }
+};
+
+const DISTRICT_ADDRESS: Record<string, string> = {
+  北投: '臺北市北投區石牌路一段39巷100號',
+  大安: '臺北市大安區辛亥路三段55號',
+  大同: '臺北市大同區大龍街51號',
+  中正: '臺北市中正區信義路一段1號',
+  內湖: '臺北市內湖區洲子街12號',
+  士林: '臺北市士林區士商路一號',
+  松山: '臺北市松山區敦化北路1號',
+  萬華: '臺北市萬華區西寧南路6-1號',
+  文山: '臺北市文山區興隆路三段222號',
+  信義: '臺北市信義區松勤街100號',
+  中山: '臺北市中山區中山北路二段44巷2號',
+  南港: '臺北市南港區玉成街69號'
 };
 
 const DEFAULT_CENTER = { lat: 25.0325917, lng: 121.5624999 };
@@ -83,6 +99,10 @@ function getLatLongByName(name: string): DistrictCoordinates {
   return DISTRICT_COORDINATES[name] || { latitude: 25.0375, longitude: 121.5625 };
 }
 
+function getAddrByName(name: string): string {
+  return DISTRICT_ADDRESS[name] || 'no address';
+}
+
 async function fetchTaipeiSportsCenters() {
   const apiUrl = '/api/TaipeiSportsCenters';
   try {
@@ -95,6 +115,7 @@ async function fetchTaipeiSportsCenters() {
         swMaxPeopleNum: number;
         gymPeopleNum: number;
         gymMaxPeopleNum: number;
+        address: string;
       }[];
     } = response.data;
     const dataItems = rawData.locationPeopleNums.map((item) => ({
@@ -104,7 +125,8 @@ async function fetchTaipeiSportsCenters() {
       gymPeopleNum: item.gymPeopleNum,
       gymPeopleNumMax: item.gymMaxPeopleNum,
       latitude: getLatLongByName(item.lidName).latitude,
-      longitude: getLatLongByName(item.lidName).longitude
+      longitude: getLatLongByName(item.lidName).longitude,
+      address: getAddrByName(item.lidName)
     }));
     return dataItems;
   } catch (err) {
@@ -146,7 +168,8 @@ async function fetchNanGangSportsCenters() {
       gymPeopleNum: rawData.gym[0],
       gymPeopleNumMax: rawData.gym[1],
       latitude: getLatLongByName('南港').latitude,
-      longitude: getLatLongByName('南港').longitude
+      longitude: getLatLongByName('南港').longitude,
+      address: getAddrByName('南港')
     };
     dataItems.push(dataItem);
     return dataItems;
@@ -198,7 +221,7 @@ async function fetchAllData() {
       lat: item.latitude,
       lng: item.longitude,
       area: '',
-      address: '',
+      address: item.address,
       swimPeopleNum: item.swimPeopleNum,
       swimPeopleNumMax: item.swimPeopleNumMax,
       gymPeopleNum: item.gymPeopleNum,
@@ -459,13 +482,15 @@ watch(searchSpotList, updateMarkers);
       <!-- 選取的點 -->
       <div v-if="selectedSpot" class="floating-box bottom-24 left-[50%] translate-x-[-50%] w-[90%]">
         <div>
-          <p class="font-bold mb-2">{{ selectedSpot.name }}</p>
+          <p class="font-bold mb-2">{{ selectedSpot.name }}運動中心</p>
           <div class="flex mb-2">
             <img src="@/assets/images/icon-geo.svg" alt="Location" />
             <span class="underline">{{ selectedSpot.address }}</span>
           </div>
           <div class="flex text-grey-500">
-            <span>{{ selectedSpot.distance }}公里</span>
+            <!-- <span>{{ selectedSpot.distance }}公里</span> -->
+            <span>健身房{{ selectedSpot.gymPeopleNum }}/{{selectedSpot.gymPeopleNumMax}}</span>
+            <span>游泳池{{ selectedSpot.swimPeopleNum }}/{{selectedSpot.swimPeopleNumMax}}</span>
           </div>
         </div>
         <img src="@/assets/images/down-icon.svg" class="-rotate-90" alt="Expand" />

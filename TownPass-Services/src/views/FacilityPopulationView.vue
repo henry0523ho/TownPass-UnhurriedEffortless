@@ -47,7 +47,7 @@
         class="center-card rounded-2xl p-6 bg-white shadow-md hover:shadow-xl hover:-translate-y-1.5 transition-all duration-200 ease-out"
       >
         <h3 class="mt-0 mb-4 text-gray-900 text-2xl font-semibold border-b border-gray-100 pb-3.5">
-          {{ center.name }}
+          {{ center.name }}運動中心
         </h3>
 
         <div class="facility-status mb-5 last:mb-0">
