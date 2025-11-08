@@ -22,13 +22,9 @@
         </button>
       </div>
     </div>
-    
-    <div v-if="loading" class="loading-message">
-      正在從API獲取即時數據...
-    </div>
-    <div v-else-if="error" class="error-message">
-      資料加載失敗：{{ error }}
-    </div>
+
+    <div v-if="loading" class="loading-message">正在從API獲取即時數據...</div>
+    <div v-else-if="error" class="error-message">資料加載失敗：{{ error }}</div>
 
     <div v-else-if="data.length > 0" class="center-grid">
       <div v-for="center in sortedData" :key="center.name" class="center-card">
@@ -61,7 +57,6 @@
             </div>
           </div>
         </div>
-        
       </div>
     </div>
   </div>
@@ -70,36 +65,45 @@
 <script setup lang="ts">
 // 4. 從 'vue' 引入 'computed'
 import { ref, onMounted, computed, onUnmounted } from 'vue';
-import LocationModal from '@/components/organisms/LocationModal.vue';
-import axios, { AxiosError } from 'axios';
+import axios from 'axios';
 
 // 您的 TypeScript 型別 (不變)
 type DataItem = {
   name: string;
-  swimPeopleNum: number;
-  swimPeopleNumMax: number;
-  gymPeopleNum: number;
-  gymPeopleNumMax: number;
+  swimPeopleNum?: number;
+  swimPeopleNumMax?: number;
+  gymPeopleNum?: number;
+  gymPeopleNumMax?: number;
   latitude: number;
   longitude: number;
 };
 
 // 您的 state (不變)
 const initialCenters = [
-  '北投運動中心', '大安運動中心', '大同運動中心', '中正運動中心',
-  '內湖運動中心', '士林運動中心', '松山運動中心', '萬華運動中心',
-  '文山運動中心', '信義運動中心', '中山運動中心'
+  '北投運動中心',
+  '大安運動中心',
+  '大同運動中心',
+  '中正運動中心',
+  '內湖運動中心',
+  '士林運動中心',
+  '松山運動中心',
+  '萬華運動中心',
+  '文山運動中心',
+  '信義運動中心',
+  '中山運動中心'
 ];
 
-const data = ref<DataItem[]>(initialCenters.map(name => ({
-  name: name,
-  swimPeopleNum: 0,
-  swimPeopleNumMax: 0,
-  gymPeopleNum: 0,
-  gymPeopleNumMax: 0,
-  latitude: 0,
-  longitude: 0
-})));
+const data = ref<DataItem[]>(
+  initialCenters.map((name) => ({
+    name: name,
+    swimPeopleNum: 0,
+    swimPeopleNumMax: 0,
+    gymPeopleNum: 0,
+    gymPeopleNumMax: 0,
+    latitude: 0,
+    longitude: 0
+  }))
+);
 const isShowLocaionModal = ref(false);
 const loading = ref(true);
 const error = ref<string | null>(null);
@@ -112,7 +116,6 @@ type SortKey = 'name' | 'total' | 'gym' | 'swim';
 const sortBy = ref<SortKey>('name');
 // 預設排序方向：升冪 (asc)
 const sortDirection = ref<'asc' | 'desc'>('asc');
-
 
 // ----------------------------------------------------------------
 // 6. 新增：切換排序方向的函式
@@ -139,16 +142,17 @@ const sortedData = computed(() => {
         // 使用 localeCompare 才能正確排序中文 (依筆劃)
         comparison = a.name.localeCompare(b.name, 'zh-Hant');
         break;
-      case 'total':
-        const totalA = a.gymPeopleNum + a.swimPeopleNum;
-        const totalB = b.gymPeopleNum + b.swimPeopleNum;
+      case 'total': {
+        const totalA = (a.gymPeopleNum ?? -1) + (a.swimPeopleNum ?? -1);
+        const totalB = (b.gymPeopleNum ?? -1) + (b.swimPeopleNum ?? -1);
         comparison = totalA - totalB;
         break;
+      }
       case 'gym':
-        comparison = a.gymPeopleNum - b.gymPeopleNum;
+        comparison = (a.gymPeopleNum ?? -1) - (b.gymPeopleNum ?? -1);
         break;
       case 'swim':
-        comparison = a.swimPeopleNum - b.swimPeopleNum;
+        comparison = (a.swimPeopleNum ?? -1) - (b.swimPeopleNum ?? -1);
         break;
     }
 
@@ -160,7 +164,6 @@ const sortedData = computed(() => {
   return dataCopy;
 });
 
-
 // ----------------------------------------------------------------
 // 您的 fetchAllData 函式 (完全不變)
 // ----------------------------------------------------------------
@@ -168,7 +171,6 @@ async function fetchTaipeiSportsCenters() {
   const apiUrl = '/api/TaipeiSportsCenters';
   try {
     const response = await axios.post(apiUrl);
-    console.log('TaipeiSportsCenters response data:', response);
     const rawData: {
       locationPeopleNums: {
         LID: string;
@@ -206,10 +208,53 @@ async function fetchTaipeiSportsCenters() {
   }
 }
 
+async function fetchNanGangSportsCenters() {
+  const apiUrl = '/api/NanGangSportsCenter';
+  try {
+    const response = await axios.post(apiUrl, null, {
+      headers: {
+        Accept: 'application/json, text/javascript, */*; q=0.01',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      withCredentials: true
+    });
+    const rawData: {
+      gym: number[];
+      swim: number[];
+    } = response.data;
+    const dataItems: DataItem[] = [];
+    const dataItem: DataItem = {
+      name: '南港',
+      swimPeopleNum: rawData.swim[0],
+      swimPeopleNumMax: rawData.swim[1],
+      gymPeopleNum: rawData.gym[0],
+      gymPeopleNumMax: rawData.gym[1],
+      latitude: 0,
+      longitude: 0
+    };
+    dataItems.push(dataItem);
+    return dataItems;
+  } catch (err) {
+    if (axios.isAxiosError(err)) {
+      if (err.response) {
+        throw Error(
+          `NanGangSportsCenters: Axios response error: ${err.response.status} ${err.response.statusText}`
+        );
+      } else if (err.request) {
+        throw Error('NanGangSportsCenters: Axios request error: No response received');
+      } else {
+        throw Error(`NanGangSportsCenters: Axios error: ${err.message}`);
+      }
+    } else {
+      throw Error('NanGangSportsCenters: Unknown error: ' + String(err));
+    }
+  }
+}
+
 async function fetchAllData() {
   data.value = [];
   error.value = null;
-  const allPromises = [fetchTaipeiSportsCenters()];
+  const allPromises = [fetchTaipeiSportsCenters(), fetchNanGangSportsCenters()];
   const results = await Promise.allSettled(allPromises);
   results.forEach((result) => {
     if (result.status === 'fulfilled' && result.value) {
@@ -223,7 +268,7 @@ async function fetchAllData() {
 }
 let intervalId: number | null = null;
 onMounted(() => {
-  intervalId = setInterval(fetchAllData, 10 * 1000);
+  intervalId = setInterval(fetchAllData, 60 * 1000);
   loading.value = true;
   fetchAllData();
 });
@@ -238,7 +283,8 @@ onUnmounted(() => {
 /* 8. 新增/修改 CSS 樣式 */
 
 .center-status-container {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    sans-serif;
   max-width: 1200px;
   margin: 2rem auto;
   padding: 0 1rem;
@@ -294,12 +340,11 @@ h2 {
 
 /* 讓按鈕寬度固定，避免文字改變時跳動 */
 .sort-direction-btn {
-  min-width: 90px; 
+  min-width: 90px;
   text-align: left;
   padding-left: 0.5rem;
   padding-right: 0.5rem;
 }
-
 
 /* 以下為舊樣式 (不變) */
 
@@ -332,7 +377,9 @@ h2 {
   padding: 1.5rem;
   background-color: #ffffff;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  transition:
+    transform 0.2s ease-in-out,
+    box-shadow 0.2s ease-in-out;
 }
 
 .center-card:hover {
