@@ -5,14 +5,22 @@
     >
       <h2 class="text-3xl font-bold text-gray-800 m-0">台北市運動中心即時人數</h2>
 
-      <div class="sort-controls">
-        <button @click="cycleSortBy" class="sort-by-btn">🔁 {{ sortByText }}</button>
-        <button @click="toggleSortDirection" class="sort-direction-btn">
+      <div class="flex justify-end items-center w-full gap-2">
+        <button
+          @click="cycleSortBy"
+          class="border border-gray-300 rounded-lg p-2 grow bg-slate-200"
+        >
+          🔁 {{ sortByText }}
+        </button>
+        <button
+          @click="toggleSortDirection"
+          class="border border-gray-300 rounded-lg p-2 px-6 grow-0 bg-slate-200"
+        >
           {{ sortDirection === 'asc' ? '🔼 升冪' : '🔽 降冪' }}
         </button>
 
         <button
-          class="border border-gray-300 rounded-lg p-2.5 bg-white text-sm shadow-sm cursor-pointer hover:bg-gray-50 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-150"
+          class="border border-gray-300 rounded-lg p-2.5 bg-slate-200 text-sm shadow-sm cursor-pointer hover:bg-gray-50 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-150 grow-0"
           @click.prevent="goToMap"
         >
           <img src="@/assets/images/icon-geo.svg" alt="開啟地圖" class="h-5 w-5" />
@@ -44,9 +52,9 @@
       <div
         v-for="center in sortedData"
         :key="center.name"
-        class="center-card rounded-2xl p-6 bg-white shadow-md hover:shadow-xl hover:-translate-y-1.5 transition-all duration-200 ease-out"
+        class="center-card rounded-2xl p-6 bg-slate-200 shadow-md hover:shadow-xl hover:-translate-y-1.5 transition-all duration-200 ease-out"
       >
-        <h3 class="mt-0 mb-4 text-gray-900 text-2xl font-semibold border-b border-gray-100 pb-3.5">
+        <h3 class="mt-0 mb-4 text-gray-900 text-2xl font-semibold border-b border-gray-400 pb-3.5">
           {{ center.name }}運動中心
         </h3>
 
@@ -90,7 +98,6 @@
               >
                 {{ center.gymPeopleNum }}
               </strong>
-              >
             </div>
             <div class="data-point capacity-count flex flex-col items-center flex-1">
               <span class="label text-sm text-gray-500 mb-1.5">總容量</span>
