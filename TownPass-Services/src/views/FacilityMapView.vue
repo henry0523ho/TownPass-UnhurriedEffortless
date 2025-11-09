@@ -682,19 +682,7 @@ watch(loading, updateMarkers);
   </div>
 
   <!-- geo modal -->
-  <MessageModal :is-show="isShowGeoError">
-    <template #header>
-      <p>請啟用定位服務</p>
-    </template>
-    <template #body>
-      <p class="text-grey-700">打開定位服務來允許“城市通”確認您的位置</p>
-    </template>
-    <template #footer>
-      <button class="text-primary-500 px-7 py-2 w-full" @click="isShowGeoError = false">
-        確認
-      </button>
-    </template>
-  </MessageModal>
+  
 </template>
 
 <style lang="postcss" scoped>
