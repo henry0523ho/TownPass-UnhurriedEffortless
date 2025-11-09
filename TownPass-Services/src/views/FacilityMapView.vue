@@ -492,11 +492,21 @@ const updateMarkers = async () => {
     });
 
     marker.addListener('click', () => {
-      if (currentFocusedMarker && currentFocusedMarker !== marker) {
-        // 恢復之前聚焦的標記為預設圖標
-        currentFocusedMarker.setIcon(greenDotIcon);
+      // 如果點擊的是當前已選中的標記，則取消選取
+      if (currentFocusedMarker === marker) {
+        // 恢復為預設圖標
+        marker.setIcon(greenDotIcon);
         selectedSpot.value = null;
+        currentFocusedMarker = null;
+        console.log('Deselected spot');
+        return;
       }
+
+      // 如果之前有其他聚焦的標記，恢復為預設圖標
+      if (currentFocusedMarker && currentFocusedMarker !== marker) {
+        currentFocusedMarker.setIcon(greenDotIcon);
+      }
+
       // 獲取所選擇的 spot 的所有屬性
       selectedSpot.value = spot;
       const focusedIcon = {
