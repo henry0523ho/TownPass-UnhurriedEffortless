@@ -313,7 +313,7 @@ async function fetchAllData() {
 onMounted(async () => {
   await fetchAllData();
   initMap(currentLocation.value.lat, currentLocation.value.lng);
-  updateMarkers();
+  // 移除這裡的 updateMarkers() 調用，因為會在 initMap 完成後自動調用
 });
 
 // ==================== Map Functions ====================
@@ -383,9 +383,21 @@ const initMap = (lat: number, lng: number) => {
       updateMarkers();
     });
 
+    // 地圖完全加載後觸發 idle 事件
+    map.addListener('idle', function () {
+      console.log('Map is idle, updating markers...');
+      updateMarkers();
+    });
+
     isMapReady.value = true;
     setMapHeight();
     window.addEventListener('resize', setMapHeight);
+
+    // 地圖初始化完成後，延遲一下確保 bounds 已經準備好
+    setTimeout(() => {
+      console.log('Initial marker update after map load');
+      updateMarkers();
+    }, 100);
   });
 };
 
@@ -419,10 +431,21 @@ const errorCallback = (error: any) => {
 
 const updateMarkers = async () => {
   console.log('Updating markers based on current map bounds.');
-  if (!map) return;
+  if (!map) {
+    console.log('Map not initialized yet, skipping marker update');
+    return;
+  }
 
   const bounds = map.getBounds();
-  if (!bounds) return;
+  if (!bounds) {
+    console.log('Map bounds not available yet, skipping marker update');
+    return;
+  }
+
+  if (searchSpotList.value.length === 0) {
+    console.log('No spot data available yet, skipping marker update');
+    return;
+  }
 
   filteredSpotList.value = searchSpotList.value
     .map((spot) => ({
@@ -538,7 +561,7 @@ const updateMarkers = async () => {
     }
   });
 };
-updateMarkers();
+
 const clearMarkers = () => {
   markers.forEach((marker) => marker.setMap(null));
   markers = [];
